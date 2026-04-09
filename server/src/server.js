@@ -1,3 +1,4 @@
+require('dotenv').config(); // Load .env dulu
 const http = require('http');
 const app = require('./app');
 const { sequelize } = require('./models');
