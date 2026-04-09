@@ -1,0 +1,11 @@
+# Build/Dist folders
+dist/
+build/
+out/
+
+# Dependencies
+node_modules/
+
+# Environment variables (Sangat Penting!)
+.env
+.env.local
