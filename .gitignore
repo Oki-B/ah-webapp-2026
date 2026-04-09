@@ -9,3 +9,4 @@ node_modules/
 # Environment variables (Sangat Penting!)
 .env
 .env.local
+.env.test
