@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
             msg: "Role name is required.",
           },
           notEmpty: {
-            msg: "Role name cannot be empty.",
+            msg: "Role name is required.",
           },
         },
       },
