@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { errorHandler } = require("./middleware/"); // Pastikan export-nya benar
-const AppError = require("./utils/appError"); // Import class error kamu
+const AppError = require("./utils/app-error.helper"); // Import class error kamu
 
 const app = express();
 const router = require("./routes/");

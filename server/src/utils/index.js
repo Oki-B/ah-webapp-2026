@@ -1,8 +1,9 @@
-const AppError = require("./appError");
-const normalizePort = require("./normalizePort");
-const { onServerError } = require("./serverHandlers");
-const { hashPassword, comparePassword } = require("./bcrypt");
-const { generateToken, verifyToken } = require("./jwtHelper");
+const AppError = require("./app-error.helper");
+const normalizePort = require("./normalize-port.helper");
+const { onServerError } = require("./server-handlers.helper");
+const { hashPassword, comparePassword } = require("./bcrypt.helper");
+const { generateToken, verifyToken } = require("./jwt.helper");
+const { withTransaction } = require("./transaction.helper");
 
 module.exports = {
   AppError,
@@ -12,4 +13,5 @@ module.exports = {
   comparePassword,
   generateToken,
   verifyToken,
+  withTransaction,
 };

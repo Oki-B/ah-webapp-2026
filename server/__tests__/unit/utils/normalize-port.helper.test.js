@@ -1,4 +1,4 @@
-const { normalizePort } = require("../../src/utils/");
+const { normalizePort } = require("../../../src/utils");
 
 describe("Unit Test: normalizePort", () => {
   it("must return a number if the input is a string number", () => {

@@ -1,4 +1,4 @@
-const UserRepository = require("../../../src/repositories/userRepository");
+const UserRepository = require("../../../src/repositories/user.repository");
 const { User, Role } = require("../../../src/models");
 
 describe("User Repository Unit Test", () => {
@@ -55,7 +55,7 @@ describe("User Repository Unit Test", () => {
   });
 
   test("should return an empty array if no users found for a role", async () => {
-    const users = await UserRepository.findByRole(999); // Role ID yang tidak ada
+    const users = await UserRepository.findByRole(999); 
     expect(users).toEqual([]);
   });
 });
