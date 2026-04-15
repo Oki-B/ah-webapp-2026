@@ -17,7 +17,7 @@ app.get("/", (req, res) =>
 );
 
 // 2. Pasang Router utama kamu di sini
-// app.use("/api", router);
+app.use("/api", router);
 
 // 3. HANDLER 404 (Taruh di bawah semua route, tapi di atas errorHandler)
 app.use((req, res, next) => {

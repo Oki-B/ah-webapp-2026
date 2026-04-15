@@ -1,11 +1,19 @@
-const { sequelize } = require("../models");
+// const { sequelize } = require("../models");
 
-const withTransaction = async (callback, existingTransaction = null) => {
+const withTransaction = async (callback, transaction = null) => {
   // Jika sudah ada transaksi dari pemanggil sebelumnya, langsung pakai
-  if (existingTransaction) {
-    return callback(existingTransaction);
+  if (transaction) {
+    return callback(transaction);
   }
 
+  // 2. Lazy Load Sequelize instance
+  // Kita panggil require di sini supaya models sudah selesai loading sepenuhnya
+  const db = require("../models");
+  const sequelize = db.sequelize;
+
+  if (!sequelize) {
+    throw new Error("Sequelize instance not found. Check your models/index.js");
+  }
   // Jika belum ada, buat transaksi baru (Managed/Unmanaged hybrid)
   const t = await sequelize.transaction();
 

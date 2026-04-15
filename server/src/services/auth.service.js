@@ -8,6 +8,7 @@ const {
 class AuthService {
   async login(email, password) {
     const user = await userRepository.findByEmail(email);
+
     if (!user) {
       throw new Error("Invalid email or password");
     }
@@ -25,7 +26,7 @@ class AuthService {
       throw new Error("Account is not verified. Please check your email.");
     }
 
-    return withTransaction(async (transaction) => {
+    return await withTransaction(async (transaction) => {
       await userRepository.updateLastLogin(user.id, { transaction });
 
       const payload = { id: user.id, role: user.role.name };
