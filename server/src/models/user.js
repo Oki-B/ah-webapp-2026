@@ -11,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // define association here
       User.belongsTo(models.Role, { foreignKey: "roleId", as: "role" });
+      User.hasMany(models.AuditLog, { foreignKey: "userId", as: "auditLogs" });
     }
   }
   User.init(
@@ -96,7 +97,8 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "User",
-      tableName: "Users",
+      tableName: "users",
+      underscored: true,
       hooks: {
         beforeCreate: async (user) => {
           if (user.password) {

@@ -1,9 +1,9 @@
 const { AppError } = require("../utils");
 const { ZodError } = require("zod");
 
+// 1. Helper: Mapping Zod (Request Validation)
 const handleZodError = (err) => {
-  const message = "Validasi request gagal";
-  const error = new AppError(message, 400);
+  const error = new AppError("Validasi request gagal", 400);
   error.errorCode = "VALIDATION_ERROR";
   error.details = err.issues.map((e) => ({
     field: e.path.join("."),
@@ -12,64 +12,71 @@ const handleZodError = (err) => {
   return error;
 };
 
+// 2. Helper: Mapping Sequelize (Database Validation)
 const handleSequelizeError = (err) => {
   let message = err.message;
   let errorCode = "DATABASE_ERROR";
+  let details = null;
 
-  if (err.name === "SequelizeValidationError") {
-    message = `Validasi database gagal: ${err.errors.map((e) => e.message).join(", ")}`;
-    errorCode = "DB_VALIDATION_ERROR";
-  } else if (err.name === "SequelizeUniqueConstraintError") {
-    message = "Data sudah ada (duplikat)";
-    errorCode = "DUPLICATE_ENTRY";
+  if (err.name === "SequelizeValidationError" || err.name === "SequelizeUniqueConstraintError") {
+    message = err.name === "SequelizeUniqueConstraintError" 
+      ? "Data sudah ada (duplikat)" 
+      : "Validasi database gagal";
+    errorCode = err.name === "SequelizeUniqueConstraintError" ? "DUPLICATE_ENTRY" : "DB_VALIDATION_ERROR";
+    
+    // Ambil detail field yang bermasalah dari Sequelize biar konsisten sama Zod
+    details = err.errors.map((e) => ({
+      field: e.path,
+      message: e.message,
+    }));
   }
 
   const error = new AppError(message, 400);
-  error.errorCode = errorCode; // Titip errorCode
+  error.errorCode = errorCode;
+  error.details = details;
   return error;
 };
 
-// Generate handler lain sesuai kebutuhan (JWT, dll)
+// 3. MAIN MIDDLEWARE
 const errorHandler = (err, req, res, next) => {
-  let error = err;
+  let error = { ...err };
+  error.message = err.message;
+  error.statusCode = err.statusCode || 500;
 
-  // 1. Panggil Helper Mapping
+  // A. Identifikasi Jenis Error
   if (err instanceof ZodError) {
     error = handleZodError(err);
   } else if (err.name?.startsWith("Sequelize")) {
     error = handleSequelizeError(err);
   }
 
-  // 2. Tentukan errorCode Final
-  // Prioritas: 1. Properti errorCode titipan, 2. Default berdasarkan statusCode
+  // B. Tentukan errorCode (Prioritas titipan -> Default status)
   const errorCode =
     error.errorCode ||
-    (error.statusCode === 401
-      ? "UNAUTHORIZED"
-      : error.statusCode === 403
-        ? "FORBIDDEN"
-        : error.statusCode === 404
-          ? "NOT_FOUND"
-          : "INTERNAL_SERVER_ERROR");
+    (error.statusCode === 401 ? "UNAUTHORIZED" : 
+     error.statusCode === 403 ? "FORBIDDEN" : 
+     error.statusCode === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR");
 
-  // 3. Susun Response sesuai selera kamu
+  // C. Susun Final Response
   const response = {
-    status: error.status || "error",
+    status: error.statusCode >= 500 ? "error" : "fail",
     error_type: errorCode,
     message: error.message,
+    ...(error.details && { details: error.details }), // Hanya muncul jika ada details
   };
 
-  if (error.details) {
-    response.details = error.details;
-  }
-
-  // Cek NODE_ENV buat sembunyiin stack trace
+  // D. Development Logging & Stack Trace
   if (process.env.NODE_ENV?.trim() === "development") {
     response.stack = err.stack;
-    console.error("❌ DEBUG LOG:", err);
+    console.error("❌ [ERROR]:", {
+      type: err.name,
+      message: err.message,
+      path: req.path,
+      ...(error.details && { details: error.details })
+    });
   }
 
-  res.status(error.statusCode || 500).json(response);
+  res.status(error.statusCode).json(response);
 };
 
 module.exports = { errorHandler };

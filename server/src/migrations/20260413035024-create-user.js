@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Users', {
+    await queryInterface.createTable('users', {
       id: {
         allowNull: false,
         primaryKey: true,
@@ -18,29 +18,29 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      roleId: {
+      role_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Roles',
+          model: 'roles',
           key: 'id'
         },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      isActive: {
+      is_active: {
         type: Sequelize.BOOLEAN,
         defaultValue: true,
       },
-      isVerified: {
+      is_verified: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
       },
-      lastLogin: {
+      last_login: {
         type: Sequelize.DATE,
         allowNull: true,
       },
-      trialUntil: {
+      trial_until: {
         type: Sequelize.DATE,
         allowNull: true,
       },
@@ -48,17 +48,17 @@ module.exports = {
         type: Sequelize.JSONB,
         defaultValue: {},
       },
-      createdAt: {
+      created_at: {
         allowNull: false,
         type: Sequelize.DATE
       },
-      updatedAt: {
+      updated_at: {
         allowNull: false,
         type: Sequelize.DATE
       }
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Users');
+    await queryInterface.dropTable('users');
   }
 };

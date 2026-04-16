@@ -1,3 +1,7 @@
+require("dotenv").config({
+  path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
+  override: true,
+}); // Load environment variables from .env file
 module.exports = {
   development: {
     username: process.env.DB_USERNAME,

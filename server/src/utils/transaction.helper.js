@@ -1,5 +1,5 @@
 // const { sequelize } = require("../models");
-const { AppError } = require("../utils/");
+const AppError = require("./app-error.helper");
 
 const withTransaction = async (callback, transaction = null) => {
   // Jika sudah ada transaksi dari pemanggil sebelumnya, langsung pakai
