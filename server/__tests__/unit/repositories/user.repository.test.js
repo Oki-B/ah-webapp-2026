@@ -71,7 +71,7 @@ describe("UserRepository", () => {
       // 2. Pastikan findByPk mengembalikan object yang punya method update
       User.findByPk = jest.fn().mockResolvedValue({
         id: userId,
-        update: mockUpdateInstance, 
+        update: mockUpdateInstance,
       });
 
       await userRepository.updateLastLogin(userId, mockOptions);

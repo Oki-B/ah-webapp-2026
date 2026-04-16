@@ -4,6 +4,7 @@ const { onServerError } = require("./server-handlers.helper");
 const { hashPassword, comparePassword } = require("./bcrypt.helper");
 const { generateToken, verifyToken } = require("./jwt.helper");
 const { withTransaction } = require("./transaction.helper");
+const delay = require("./delay.helper");
 
 module.exports = {
   AppError,
@@ -14,4 +15,5 @@ module.exports = {
   generateToken,
   verifyToken,
   withTransaction,
+  delay,
 };

@@ -4,7 +4,7 @@ require("dotenv").config({
 });
 const express = require("express");
 const cors = require("cors");
-const { errorHandler } = require("./middleware/"); // Pastikan export-nya benar
+const { errorHandler, globalLimiter } = require("./middleware/"); // Pastikan export-nya benar
 const AppError = require("./utils/app-error.helper"); // Import class error kamu
 
 const app = express();
@@ -20,7 +20,7 @@ app.get("/", (req, res) =>
 );
 
 // 2. Pasang Router utama kamu di sini
-app.use("/api", router);
+app.use("/api", globalLimiter, router);
 
 // 3. HANDLER 404 (Taruh di bawah semua route, tapi di atas errorHandler)
 app.use((req, res, next) => {

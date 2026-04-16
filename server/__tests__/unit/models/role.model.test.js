@@ -1,8 +1,13 @@
 const { Role } = require("../../../src/models");
+const { sequelize } = require("../../../src/models");
 
 describe("Role Model Unit Test", () => {
   beforeAll(async () => {
     await Role.destroy({ where: {}, truncate: { cascade: true } });
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
   });
 
   test("should fail if name is NULL", async () => {

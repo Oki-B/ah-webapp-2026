@@ -1,5 +1,10 @@
 const request = require("supertest");
 const app = require("../../src/app");
+const { sequelize } = require("../../src/models");
+
+afterAll(async () => {
+  await sequelize.close(); 
+});
 
 describe("Integration Test: Express App", () => {
   it("must respond with 404 for nonexistent route", async () => {
@@ -22,9 +27,5 @@ describe("Integration Test: Express App", () => {
     // Setelah app.js diupdate, ini tidak akan undefined lagi
     expect(res.body.status).toBe("success");
     expect(res.body.message).toBe("Api is running...");
-  });
-
-  it("should verify env variables", () => {
-    console.log("DB_NAME yang dipake:", process.env.DB_NAME);
   });
 });
