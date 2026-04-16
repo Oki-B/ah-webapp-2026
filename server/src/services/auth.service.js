@@ -3,6 +3,7 @@ const {
   comparePassword,
   generateToken,
   withTransaction,
+  AppError,
 } = require("../utils/");
 
 class AuthService {
@@ -10,20 +11,28 @@ class AuthService {
     const user = await userRepository.findByEmail(email);
 
     if (!user) {
-      throw new Error("Invalid email or password");
+      // 401 karena ini masalah kredensial (Unauthorized)
+      throw new AppError("Invalid email or password", 401);
     }
 
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
-      throw new Error("Invalid email or password");
+      // Kasih delay di sini kalau mau proteksi brute force
+      // await delay(1500);
+      throw new AppError("Invalid email or password", 401);
     }
 
     if (!user.isActive) {
-      throw new Error("Account is inactive. Please contact support.");
+      // 403 karena dia terautentikasi tapi dilarang masuk (Forbidden)
+      throw new AppError("Account is inactive. Please contact support.", 403);
     }
 
     if (!user.isVerified) {
-      throw new Error("Account is not verified. Please check your email.");
+      // 403 atau 401 tergantung kebijakan kamu, 403 biasanya lebih pas
+      throw new AppError(
+        "Account is not verified. Please check your email.",
+        403,
+      );
     }
 
     return await withTransaction(async (transaction) => {

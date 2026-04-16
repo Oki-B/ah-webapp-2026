@@ -1,4 +1,5 @@
 // const { sequelize } = require("../models");
+const { AppError } = require("../utils/");
 
 const withTransaction = async (callback, transaction = null) => {
   // Jika sudah ada transaksi dari pemanggil sebelumnya, langsung pakai
@@ -12,8 +13,12 @@ const withTransaction = async (callback, transaction = null) => {
   const sequelize = db.sequelize;
 
   if (!sequelize) {
-    throw new Error("Sequelize instance not found. Check your models/index.js");
+    throw new AppError(
+      "Sequelize instance not found. Check your models/index.js",
+      500,
+    );
   }
+
   // Jika belum ada, buat transaksi baru (Managed/Unmanaged hybrid)
   const t = await sequelize.transaction();
 
@@ -24,7 +29,7 @@ const withTransaction = async (callback, transaction = null) => {
   } catch (error) {
     // Pastikan rollback hanya dilakukan jika transaksi baru saja dibuat di sini
     if (t) await t.rollback();
-    throw error;
+    throw new AppError("Transaction failed", 500);
   }
 };
 

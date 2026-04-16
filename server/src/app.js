@@ -1,4 +1,7 @@
-require("dotenv").config();
+require("dotenv").config({
+  path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
+  override: true,
+});
 const express = require("express");
 const cors = require("cors");
 const { errorHandler } = require("./middleware/"); // Pastikan export-nya benar
@@ -13,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // 1. Root Route
 app.get("/", (req, res) =>
-  res.status(200).json({ message: "Api is running..." }),
+  res.status(200).json({ status: "success", message: "Api is running..." }),
 );
 
 // 2. Pasang Router utama kamu di sini

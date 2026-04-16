@@ -1,61 +1,91 @@
-const UserRepository = require("../../../src/repositories/user.repository");
+const userRepository = require("../../../src/repositories/user.repository");
 const { User, Role } = require("../../../src/models");
 
-describe("User Repository Unit Test", () => {
-  beforeAll(async () => {
-    // Setup initial data for testing
-    await User.destroy({ where: {}, truncate: { cascade: true } });
-    await Role.destroy({ where: {}, truncate: { cascade: true } });
-    await Role.create({ id: 1, name: "superadmin" });
-    await Role.create({ id: 2, name: "admin" });
+// Mock Sequelize Models
+jest.mock("../../../src/models", () => ({
+  User: {
+    findOne: jest.fn(),
+    findAll: jest.fn(),
+    update: jest.fn(),
+  },
+  Role: {},
+}));
+
+describe("UserRepository", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  test("should find a user by email with role included", async () => {
-    const email = "repo-test@example.com";
-    await User.create({
-      email,
-      password: "Securepassword123",
-      roleId: 1,
+  describe("findByEmail", () => {
+    it("should call findOne with correct include and criteria", async () => {
+      const email = "test@example.com";
+      const mockUser = { id: 1, email, role: { name: "admin" } };
+
+      // Mock implementasi findOne dari Sequelize
+      User.findOne.mockResolvedValue(mockUser);
+
+      const result = await userRepository.findByEmail(email);
+
+      // Cek apakah parameter include Role sudah benar (ini inti dari UserRepository)
+      expect(User.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { email },
+          include: [{ model: Role, as: "role" }],
+        }),
+      );
+
+      expect(result).toEqual(mockUser);
     });
-
-    const user = await UserRepository.findByEmail(email);
-
-    expect(user).toBeDefined();
-    expect(user.email).toBe(email);
-    expect(user.role).toBeDefined(); // Memastikan 'include' jalan
-    expect(user.role.name).toBe("superadmin");
   });
 
-  test("should return null if user email is not found", async () => {
-    const user = await UserRepository.findByEmail("not-found@example.com");
-    expect(user).toBeNull();
-  });
+  describe("findByRole", () => {
+    it("should call findAll with nested Role where clause", async () => {
+      const roleId = 2;
+      User.findAll.mockResolvedValue([]);
 
-  test("should find users by role ID", async () => {
-    const email1 = "user1@example.com";
-    const email2 = "user2@example.com";
+      await userRepository.findByRole(roleId);
 
-    await User.create({
-      email: email1,
-      password: "Securepassword123",
-      roleId: 2,
+      // Cek apakah include role memiliki filter where roleId yang tepat
+      expect(User.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: [
+            {
+              model: Role,
+              as: "role",
+              where: { id: roleId },
+            },
+          ],
+        }),
+      );
     });
-
-    await User.create({
-      email: email2,
-      password: "Securepassword123",
-      roleId: 2,
-    });
-
-    const users = await UserRepository.findByRole(2);
-
-    expect(users).toHaveLength(2);
-    expect(users[0].email).toBe(email1);
-    expect(users[1].email).toBe(email2);
   });
 
-  test("should return an empty array if no users found for a role", async () => {
-    const users = await UserRepository.findByRole(999); 
-    expect(users).toEqual([]);
+  describe("updateLastLogin", () => {
+    it("should call update with current date and transaction options", async () => {
+      const userId = 1;
+      const mockOptions = { transaction: "mock-t" };
+
+      // 1. Buat Mock Function untuk update milik instance
+      const mockUpdateInstance = jest.fn().mockResolvedValue({ id: userId });
+
+      // 2. Pastikan findByPk mengembalikan object yang punya method update
+      User.findByPk = jest.fn().mockResolvedValue({
+        id: userId,
+        update: mockUpdateInstance, 
+      });
+
+      await userRepository.updateLastLogin(userId, mockOptions);
+
+      // 3. Verifikasi: Apakah findByPk dipanggil dengan benar?
+      expect(User.findByPk).toHaveBeenCalledWith(userId, mockOptions);
+
+      // 4. Verifikasi: Apakah instance update dipanggil dengan data yang benar?
+      expect(mockUpdateInstance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lastLogin: expect.any(Date),
+        }),
+        mockOptions,
+      );
+    });
   });
 });
