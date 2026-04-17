@@ -42,15 +42,10 @@ module.exports = (sequelize, DataTypes) => {
       },
       password: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         validate: {
-          notNull: {
-            msg: "Password is required.",
-          },
-          notEmpty: {
-            msg: "Password cannot be empty.",
-          },
           isStrongPassword(value) {
+            if (!value) return; // Skip validation if password is not provided (e.g., for OAuth users)
             const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}$/;
 
             if (!regex.test(value)) {

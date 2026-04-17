@@ -1,26 +1,26 @@
-'use strict';
+"use strict";
 
-const { all } = require('../routes');
+const { all } = require("../routes");
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('audit_logs', {
+    await queryInterface.createTable("audit_logs", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       user_id: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       email: {
         type: Sequelize.STRING,
@@ -31,7 +31,7 @@ module.exports = {
         allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM('SUCCESS', 'FAILED'),
+        type: Sequelize.ENUM("SUCCESS", "FAILED"),
         allowNull: false,
       },
       ip_address: {
@@ -46,13 +46,17 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: true,
       },
+      payload: {
+        type: Sequelize.JSONB,
+        allowNull: true,
+      },
       created_at: {
         allowNull: false,
-        type: Sequelize.DATE
-      }
+        type: Sequelize.DATE,
+      },
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('audit_logs');
-  }
+    await queryInterface.dropTable("audit_logs");
+  },
 };

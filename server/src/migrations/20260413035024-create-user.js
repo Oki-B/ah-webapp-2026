@@ -16,7 +16,12 @@ module.exports = {
       },
       password: {
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
+      },
+      google_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        unique: true,
       },
       role_id: {
         type: Sequelize.INTEGER,
