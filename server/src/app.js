@@ -10,6 +10,7 @@ const AppError = require("./utils/app-error.helper"); // Import class error kamu
 const app = express();
 const router = require("./routes/");
 
+app.set("trust proxy", true); // Penting untuk rate limiter yang berada di belakang proxy (misal: Nginx, Heroku, dll)
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

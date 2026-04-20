@@ -1,7 +1,8 @@
 const { userRepository } = require("../repositories");
 const {
   comparePassword,
-  generateToken,
+  generateAccessToken,
+  generateAccessToken,
   withTransaction,
   AppError,
   delay,
@@ -133,10 +134,18 @@ class AuthService {
   }
 
   _generateResponse(user) {
-    const payload = { id: user.id, role: user.role.name };
-    const token = generateToken(payload);
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role.name || "guest",
+    };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateAccessToken(payload);
     return {
-      token,
+      token: {
+        accessToken,
+        refreshToken,
+      },
       user: { id: user.id, email: user.email, role: user.role.name },
     };
   }
