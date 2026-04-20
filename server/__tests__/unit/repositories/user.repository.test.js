@@ -62,29 +62,21 @@ describe("UserRepository", () => {
 
   describe("updateLastLogin", () => {
     it("should call update with current date and transaction options", async () => {
-      const userId = 1;
+      const userId = "uuid-123";
       const mockOptions = { transaction: "mock-t" };
 
-      // 1. Buat Mock Function untuk update milik instance
-      const mockUpdateInstance = jest.fn().mockResolvedValue({ id: userId });
+      // 1. Jalankan fungsi
+      await userRepository.updateLastLogin(userId, mockOptions.transaction);
 
-      // 2. Pastikan findByPk mengembalikan object yang punya method update
-      User.findByPk = jest.fn().mockResolvedValue({
-        id: userId,
-        update: mockUpdateInstance,
-      });
-
-      await userRepository.updateLastLogin(userId, mockOptions);
-
-      // 3. Verifikasi: Apakah findByPk dipanggil dengan benar?
-      expect(User.findByPk).toHaveBeenCalledWith(userId, mockOptions);
-
-      // 4. Verifikasi: Apakah instance update dipanggil dengan data yang benar?
-      expect(mockUpdateInstance).toHaveBeenCalledWith(
+      // 2. Verifikasi: Pastikan User.update (Static) dipanggil, BUKAN findByPk
+      expect(User.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          lastLogin: expect.any(Date),
+          lastLogin: expect.any(Date), // Pastikan ada lastLogin dengan value Date
         }),
-        mockOptions,
+        expect.objectContaining({
+          where: { id: userId },
+          transaction: "mock-t",
+        }),
       );
     });
   });

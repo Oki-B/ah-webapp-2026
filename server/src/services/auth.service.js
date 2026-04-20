@@ -2,7 +2,7 @@ const { userRepository } = require("../repositories");
 const {
   comparePassword,
   generateAccessToken,
-  generateAccessToken,
+  generateRefreshToken,
   withTransaction,
   AppError,
   delay,
@@ -140,7 +140,7 @@ class AuthService {
       role: user.role.name || "guest",
     };
     const accessToken = generateAccessToken(payload);
-    const refreshToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
     return {
       token: {
         accessToken,

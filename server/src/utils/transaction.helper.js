@@ -27,9 +27,12 @@ const withTransaction = async (callback, transaction = null) => {
     await t.commit();
     return result;
   } catch (error) {
-    // Pastikan rollback hanya dilakukan jika transaksi baru saja dibuat di sini
     if (t) await t.rollback();
-    throw new AppError("Transaction failed", 500);
+    // Bungkus error asli atau teruskan message-nya
+    throw new AppError(
+      error.message || "Transaction failed",
+      error.statusCode || 500,
+    );
   }
 };
 

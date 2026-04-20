@@ -11,6 +11,7 @@ const {
 const { withTransaction } = require("./transaction.helper");
 const delay = require("./delay.helper");
 const { verifyGoogleToken } = require("./google-auth.helper");
+const { getSimpleDeviceName } = require("./device.helper");
 
 module.exports = {
   AppError,
@@ -25,4 +26,5 @@ module.exports = {
   withTransaction,
   delay,
   verifyGoogleToken,
+  getSimpleDeviceName,
 };
