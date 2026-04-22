@@ -6,8 +6,8 @@ class BaseRepository {
     this.Op = Op; // Menyimpan Op di instance untuk digunakan di repository turunan
   }
 
-  async findOne(where, options = {}) {
-    return await this.model.findOne({ where, ...options });
+  async findOne(options = {}) {
+    return await this.model.findOne(options);
   }
 
   async findById(id, options = {}) {

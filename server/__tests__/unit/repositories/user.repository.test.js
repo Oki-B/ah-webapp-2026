@@ -62,20 +62,18 @@ describe("UserRepository", () => {
 
   describe("updateLastLogin", () => {
     it("should call update with current date and transaction options", async () => {
-      const userId = "uuid-123";
-      const mockOptions = { transaction: "mock-t" };
+      // BENAR: Mengirim objek options sesuai ekspektasi spread operator
+      const mockT = { commit: jest.fn(), rollback: jest.fn() }; // atau objek mock
+      await userRepository.updateLastLogin("uuid-123", { transaction: mockT });
 
-      // 1. Jalankan fungsi
-      await userRepository.updateLastLogin(userId, mockOptions.transaction);
-
-      // 2. Verifikasi: Pastikan User.update (Static) dipanggil, BUKAN findByPk
+      // Dan di bagian expect-nya:
       expect(User.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          lastLogin: expect.any(Date), // Pastikan ada lastLogin dengan value Date
+          lastLogin: expect.any(Date),
         }),
         expect.objectContaining({
-          where: { id: userId },
-          transaction: "mock-t",
+          where: { id: "uuid-123" },
+          transaction: mockT,
         }),
       );
     });

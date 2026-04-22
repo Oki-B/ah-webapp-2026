@@ -1,22 +1,28 @@
 const { AuditLog } = require("../models");
+const { getSimpleDeviceName } = require("../utils/");
 
 class AuditService {
-  static async record({
+  async record({
     action,
     status,
     userId = null,
     email = null,
+    ip = "0.0.0.0",
+    ua = "unknown",
+    deviceName = null, // Opsional, kalau sudah ada kiriman nama cantik
     metadata = {},
-    req,
     transaction = null,
   }) {
     try {
-      const ipAddress =
-        req.headers["x-forwarded-for"]?.split(",")[0] ||
-        req.ip ||
-        req.connection.remoteAddress ||
-        "0.0.0.0";
-      const userAgent = req.headers["user-agent"] || "unknown";
+      // LOGIC: Kalau deviceName kosong tapi ada UA, kita parsing otomatis
+      const finalDeviceName =
+        deviceName ||
+        (ua !== "unknown" ? getSimpleDeviceName(ua) : "Unknown Device");
+
+      const logPayload = {
+        ...metadata,
+        deviceName: finalDeviceName,
+      };
 
       await AuditLog.create(
         {
@@ -24,20 +30,17 @@ class AuditService {
           status,
           userId,
           email,
-          ipAddress,
-          userAgent,
+          ipAddress: ip,
+          userAgent: ua,
           reason: metadata.reason || null,
-          payload: metadata.payload || null,
+          payload: logPayload,
         },
         { transaction },
       );
     } catch (error) {
-      console.error(
-        "[AuditService] Failed to record audit log:",
-        error.message,
-      );
+      console.error(`[AuditService] Error:`, error.message);
     }
   }
 }
 
-module.exports = AuditService;
+module.exports = new AuditService();

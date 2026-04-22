@@ -140,10 +140,17 @@ describe("AuthService - Google Login", () => {
 
     const result = await authService.loginGoogle(googlePayload, mockReq);
 
+    // __tests__/unit/services/auth.service.test.js
+
     expect(userRepository.update).toHaveBeenCalledWith(
-      mockUser.id,
+      // Argumen 1: Data yang diupdate
       { googleId: "google-id-123" },
-      expect.any(Object),
+
+      // Argumen 2: Options (where dan transaction)
+      expect.objectContaining({
+        where: { id: mockUser.id },
+        transaction: expect.anything(), // atau "mock-transaction" sesuai mock lu
+      }),
     );
     expect(result.token).toBeDefined();
   });

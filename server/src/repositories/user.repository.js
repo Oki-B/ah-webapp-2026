@@ -6,20 +6,17 @@ class UserRepository extends BaseRepository {
     super(User);
   }
 
+  // Pola: (data, options = {})
   async findByEmail(email, options = {}) {
-    // Gunakan this.model.findOne agar langsung akses ke Sequelize model
     return await this.model.findOne({
       where: { email },
       include: [{ model: Role, as: "role" }],
-      ...options, // transaction, lock, dll masuk ke sini
+      ...options,
     });
   }
 
   async findByRole(roleId, options = {}) {
     return await this.model.findAll({
-      where: {
-        // Jika di model Role ada relasi, lebih clean filter di level include atau where
-      },
       include: [{ 
         model: Role, 
         as: "role", 
@@ -29,19 +26,14 @@ class UserRepository extends BaseRepository {
     });
   }
 
-  async updateLastLogin(userId, transactionOrOptions = {}) {
-    /**
-     * Tips: Agar service bisa kirim 't' langsung atau '{ transaction: t }'
-     */
-    const config = transactionOrOptions.transaction 
-      ? transactionOrOptions 
-      : { transaction: transactionOrOptions };
-
-    return await this.update(
+  // SEBELUMNYA: updateLastLogin(userId, transactionOrOptions) -> Ganti!
+  async updateLastLogin(userId, options = {}) {
+    // Gak perlu lagi logic 'config' yang ribet di sini
+    return await this.model.update(
       { lastLogin: new Date() },
       { 
         where: { id: userId }, 
-        ...config 
+        ...options // transaction harus dibungkus dalam objek: { transaction: t }
       }
     );
   }
