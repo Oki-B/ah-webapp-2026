@@ -4,6 +4,7 @@ require("dotenv").config({
 });
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const { errorHandler, globalLimiter } = require("./middleware/"); // Pastikan export-nya benar
 const AppError = require("./utils/app-error.helper"); // Import class error kamu
 
@@ -14,6 +15,7 @@ app.set("trust proxy", true); // Penting untuk rate limiter yang berada di belak
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // 1. Root Route
 app.get("/", (req, res) =>

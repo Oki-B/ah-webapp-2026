@@ -7,12 +7,10 @@ class UserSessionRepository extends BaseRepository {
     super(UserSession);
   }
 
-  async createSession({ userId, refreshToken, expiresAt, req }, options = {}) {
-    const ua = req.headers["user-agent"] || "";
-    const deviceName = getSimpleDeviceName(ua);
-    const ip =
-      req.headers["x-forwarded-for"]?.split(",")[0] || req.ip || "0.0.0.0";
-
+  async createSession(
+    { userId, refreshToken, expiresAt, ua, deviceName, ip },
+    options = {},
+  ) {
     return await this.model.create(
       {
         userId,
@@ -90,7 +88,6 @@ class UserSessionRepository extends BaseRepository {
       return await oldest.update({ revokedAt: new Date() }, options);
     }
   }
-
 
   async revokeSessionById(id, options = {}) {
     return await this.model.update(

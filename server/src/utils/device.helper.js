@@ -15,7 +15,7 @@ const getSimpleDeviceName = (ua) => {
 // Fungsi ekstraksi: Khusus buat Controller ambil data dari Request
 const extractClientInfo = (req) => {
   return {
-    ua: req.headers["user-agent"] || "",
+    ua: req.headers["user-agent"],
     ip:
       req.headers["x-forwarded-for"]?.split(",")[0] ||
       req.socket.remoteAddress ||

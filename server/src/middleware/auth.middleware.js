@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { AppError } = require("../utils");
+const { AppError, verifyGoogleToken } = require("../utils");
 const { userRepository } = require("../repositories");
 
 const authenticate = async (req, res, next) => {
@@ -41,6 +41,21 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+const validateGoogleToken = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      throw new AppError("Google token missing", 400);
+    }
+    const payload = await verifyGoogleToken(token);
+    req.googleUser = payload;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   authenticate,
+  validateGoogleToken,
 };

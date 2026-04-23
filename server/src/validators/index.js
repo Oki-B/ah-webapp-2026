@@ -1,5 +1,5 @@
-const { loginSchema } = require("./auth.validator");
+const authShema = require("./auth.validator");
 
 module.exports = {
-  loginSchema,
+  authShema,
 };

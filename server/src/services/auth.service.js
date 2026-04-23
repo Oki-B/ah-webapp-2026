@@ -95,8 +95,8 @@ class AuthService {
       });
 
       return {
-        accessToken: sessionData.token.accessToken,
-        refreshToken: sessionData.token.refreshToken,
+        accessToken: sessionData.accessToken,
+        refreshToken: sessionData.refreshToken,
         user: sessionData.user,
       };
     });

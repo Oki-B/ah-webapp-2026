@@ -19,8 +19,8 @@ const globalLimiter = rateLimit({
 
 // 2. Limiter Khusus Auth (Login/Register)
 const loginLimiter = rateLimit({
-  windowMs: 30 * 60 * 1000, // 30 Menit
-  max: process.env.NODE_ENV === "test" ? 100 : 5, // Cuma boleh 5x gagal/coba per 30 menit
+  windowMs: 15 * 60 * 1000, // 15 Menit
+  max: process.env.NODE_ENV === "test" ? 100 : 5, // Cuma boleh 5x gagal/coba per 15 menit
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res, next) => {
@@ -33,4 +33,19 @@ const loginLimiter = rateLimit({
   },
 });
 
-module.exports = { globalLimiter, loginLimiter };
+const refreshTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 Menit
+  max: process.env.NODE_ENV === "test" ? 100 : 10, // Cuma boleh 10x gagal/coba per 15 menit
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res, next) => {
+    next(
+      new AppError(
+        "Too many refresh token requests from this IP, please try again later.",
+        429,
+      ),
+    );
+  },
+});
+
+module.exports = { globalLimiter, loginLimiter, refreshTokenLimiter };
