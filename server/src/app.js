@@ -1,23 +1,29 @@
-require("dotenv").config();
+require("dotenv").config({
+  path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
+  override: true,
+});
 const express = require("express");
 const cors = require("cors");
-const { errorHandler } = require("./middleware/"); // Pastikan export-nya benar
-const AppError = require("./utils/appError"); // Import class error kamu
+const cookieParser = require("cookie-parser");
+const { errorHandler, globalLimiter } = require("./middleware/"); // Pastikan export-nya benar
+const AppError = require("./utils/app-error.helper"); // Import class error kamu
 
 const app = express();
 const router = require("./routes/");
 
+app.set("trust proxy", true); // Penting untuk rate limiter yang berada di belakang proxy (misal: Nginx, Heroku, dll)
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // 1. Root Route
 app.get("/", (req, res) =>
-  res.status(200).json({ message: "Api is running..." }),
+  res.status(200).json({ status: "success", message: "Api is running..." }),
 );
 
 // 2. Pasang Router utama kamu di sini
-// app.use("/api", router);
+app.use("/api", globalLimiter, router);
 
 // 3. HANDLER 404 (Taruh di bawah semua route, tapi di atas errorHandler)
 app.use((req, res, next) => {

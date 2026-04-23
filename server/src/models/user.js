@@ -11,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // define association here
       User.belongsTo(models.Role, { foreignKey: "roleId", as: "role" });
+      User.hasMany(models.AuditLog, { foreignKey: "userId", as: "auditLogs" });
     }
   }
   User.init(
@@ -41,15 +42,10 @@ module.exports = (sequelize, DataTypes) => {
       },
       password: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         validate: {
-          notNull: {
-            msg: "Password is required.",
-          },
-          notEmpty: {
-            msg: "Password cannot be empty.",
-          },
           isStrongPassword(value) {
+            if (!value) return; // Skip validation if password is not provided (e.g., for OAuth users)
             const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}$/;
 
             if (!regex.test(value)) {
@@ -96,7 +92,8 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "User",
-      tableName: "Users",
+      tableName: "users",
+      underscored: true,
       hooks: {
         beforeCreate: async (user) => {
           if (user.password) {

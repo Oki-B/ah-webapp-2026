@@ -8,11 +8,11 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     // Seed roles from config/constants.js
     await queryInterface.bulkInsert(
-      "Roles",
+      "roles",
       Object.values(ROLES).map((role) => ({
         ...role,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       })),
       {},
     );
@@ -29,7 +29,7 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.bulkDelete("Users", null, {});
-    await queryInterface.bulkDelete("Roles", null, {});
+    await queryInterface.bulkDelete("users", null, {});
+    await queryInterface.bulkDelete("roles", null, {});
   },
 };

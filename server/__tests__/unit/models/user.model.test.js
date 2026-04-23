@@ -1,5 +1,6 @@
 const { User, Role } = require("../../../src/models");
 const bcrypt = require("../../../src/utils");
+const { sequelize } = require("../../../src/models");
 
 describe("User Model Unit Test", () => {
   beforeAll(async () => {
@@ -9,6 +10,10 @@ describe("User Model Unit Test", () => {
 
     // Create a role for association
     await Role.create({ id: 1, name: "user" });
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
   });
 
   describe("Password Hashing Hook", () => {
@@ -21,7 +26,10 @@ describe("User Model Unit Test", () => {
       });
 
       expect(user.password).not.toBe(plainPassword);
-      const isMatch = await bcrypt.comparePassword(plainPassword, user.password);
+      const isMatch = await bcrypt.comparePassword(
+        plainPassword,
+        user.password,
+      );
       expect(isMatch).toBe(true);
     });
   });

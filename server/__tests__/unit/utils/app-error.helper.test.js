@@ -1,4 +1,4 @@
-const { AppError } = require("../../src/utils/");
+const { AppError } = require("../../../src/utils");
 
 describe("Unit Test: AppError", () => {
   it("must create an error object with the correct statusCode and status", () => {

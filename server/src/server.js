@@ -2,8 +2,8 @@ require('dotenv').config(); // Load .env dulu
 const http = require('http');
 const app = require('./app');
 const { sequelize } = require('./models');
-const normalizePort = require('./utils/normalizePort');
-const { onServerError } = require('./utils/serverHandlers');
+const normalizePort = require('./utils/normalize-port.helper');
+const { onServerError } = require('./utils/server-handlers.helper');
 
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);

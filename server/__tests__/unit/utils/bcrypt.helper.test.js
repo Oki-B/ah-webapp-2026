@@ -1,4 +1,4 @@
-const { hashPassword, comparePassword } = require("../../src/utils");
+const { hashPassword, comparePassword } = require("../../../src/utils");
 
 describe("Bcrypt Utility", () => {
   const plainPassword = "mySecretPassword123";
