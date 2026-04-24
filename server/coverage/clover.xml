@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1776999583536" clover="3.2.0">
-  <project timestamp="1776999583536" name="All files">
-    <metrics statements="482" coveredstatements="431" conditionals="215" coveredconditionals="160" methods="87" coveredmethods="70" elements="784" coveredelements="661" complexity="0" loc="482" ncloc="482" packages="10" files="38" classes="38"/>
+<coverage generated="1777001745903" clover="3.2.0">
+  <project timestamp="1777001745903" name="All files">
+    <metrics statements="485" coveredstatements="434" conditionals="219" coveredconditionals="163" methods="87" coveredmethods="70" elements="791" coveredelements="667" complexity="0" loc="485" ncloc="485" packages="10" files="38" classes="38"/>
     <package name="src">
       <metrics statements="22" coveredstatements="21" conditionals="4" coveredconditionals="2" methods="2" coveredmethods="2"/>
       <file name="app.js" path="/Users/sb/Documents/Web_Project_2026/AH-Web-Company/ah-webapp-2026/server/src/app.js">
@@ -352,17 +352,20 @@
       </file>
     </package>
     <package name="src.services">
-      <metrics statements="111" coveredstatements="91" conditionals="54" coveredconditionals="40" methods="16" coveredmethods="12"/>
+      <metrics statements="114" coveredstatements="94" conditionals="58" coveredconditionals="43" methods="16" coveredmethods="12"/>
       <file name="audit.service.js" path="/Users/sb/Documents/Web_Project_2026/AH-Web-Company/ah-webapp-2026/server/src/services/audit.service.js">
-        <metrics statements="8" coveredstatements="8" conditionals="13" coveredconditionals="9" methods="1" coveredmethods="1"/>
+        <metrics statements="11" coveredstatements="11" conditionals="17" coveredconditionals="12" methods="1" coveredmethods="1"/>
         <line num="1" count="5" type="stmt"/>
         <line num="2" count="5" type="stmt"/>
-        <line num="16" count="6" type="stmt"/>
-        <line num="19" count="6" type="cond" truecount="2" falsecount="0"/>
-        <line num="22" count="6" type="stmt"/>
-        <line num="27" count="6" type="stmt"/>
-        <line num="41" count="1" type="stmt"/>
-        <line num="46" count="5" type="stmt"/>
+        <line num="3" count="5" type="stmt"/>
+        <line num="17" count="5" type="stmt"/>
+        <line num="20" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="24" count="5" type="stmt"/>
+        <line num="26" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="36" count="5" type="stmt"/>
+        <line num="45" count="5" type="stmt"/>
+        <line num="59" count="1" type="stmt"/>
+        <line num="64" count="5" type="stmt"/>
       </file>
       <file name="auth.service.js" path="/Users/sb/Documents/Web_Project_2026/AH-Web-Company/ah-webapp-2026/server/src/services/auth.service.js">
         <metrics statements="60" coveredstatements="49" conditionals="27" coveredconditionals="19" methods="8" coveredmethods="8"/>
