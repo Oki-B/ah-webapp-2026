@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">15.38% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>2/13</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>7/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.66% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>2/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -81,39 +81,39 @@
 <a name='L16'></a><a href='#L16'>16</a>
 <a name='L17'></a><a href='#L17'>17</a>
 <a name='L18'></a><a href='#L18'>18</a>
-<a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span></td><td class="text"><pre class="prettyprint lang-js">const onServerError = <span class="fstat-no" title="function not covered" >(e</span>rror, port) =&gt; {
-<span class="cstat-no" title="statement not covered" >  if (error.syscall !== 'listen') <span class="cstat-no" title="statement not covered" >throw error;</span></span>
-  const bind = <span class="cstat-no" title="statement not covered" >typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;</span>
+<span class="cline-any cline-yes">21x</span></td><td class="text"><pre class="prettyprint lang-js">const onServerError = (error, port) =&gt; {
+  if (error.syscall !== 'listen') throw error;
+  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  switch (error.code) {</span>
+  switch (error.code) {
     case 'EACCES':
-<span class="cstat-no" title="statement not covered" >      console.error(`${bind} requires elevated privileges`);</span>
-<span class="cstat-no" title="statement not covered" >      process.exit(1);</span>
-<span class="cstat-no" title="statement not covered" >      break;</span>
+      console.error(`${bind} requires elevated privileges`);
+      process.exit(1);
+      break;
     case 'EADDRINUSE':
-<span class="cstat-no" title="statement not covered" >      console.error(`${bind} is already in use`);</span>
-<span class="cstat-no" title="statement not covered" >      process.exit(1);</span>
-<span class="cstat-no" title="statement not covered" >      break;</span>
+      console.error(`${bind} is already in use`);
+      process.exit(1);
+      break;
     default:
-<span class="cstat-no" title="statement not covered" >      throw error;</span>
+      throw error;
   }
 };
 &nbsp;
@@ -124,7 +124,7 @@ module.exports = { onServerError };</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-20T08:40:57.213Z
+                at 2026-04-24T02:59:43.513Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

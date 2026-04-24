@@ -3,10 +3,10 @@ const router = express.Router();
 
 const { authController } = require("../controllers");
 const { authShema } = require("../validators");
-const { validate, loginLimiter } = require("../middleware");
+const { validate, loginLimiter } = require("../middlewares");
 const {
   refreshTokenLimiter,
-} = require("../middleware/rate-limiter.middleware");
+} = require("../middlewares/rate-limiter.middleware");
 
 router.post(
   "/login",

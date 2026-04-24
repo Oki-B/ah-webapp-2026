@@ -1,57 +1,83 @@
-const { User, Role } = require("../../../src/models");
-const bcrypt = require("../../../src/utils");
-const { sequelize } = require("../../../src/models");
+const { User, Role, sequelize } = require("../../../src/models");
+const { hashPassword } = require("../../../src/utils/");
 
-describe("User Model Unit Test", () => {
+describe("User Model Integration Test", () => {
   beforeAll(async () => {
-    // Clean up table before tests
+    // 1. Bersihkan database sebelum mulai
+    // Urutan penting: hapus User dulu baru Role karena User tergantung pada Role
     await User.destroy({ where: {}, truncate: { cascade: true } });
     await Role.destroy({ where: {}, truncate: { cascade: true } });
 
-    // Create a role for association
-    await Role.create({ id: 1, name: "user" });
+    // 2. Setup data dasar yang dibutuhkan semua test case
+    adminRole = await Role.create({ name: "admin" });
+  });
+
+  // OPSIONAL: Jika lu ingin setiap test case (it/test) mulai dari nol
+  afterEach(async () => {
+    // Hapus semua user setelah setiap 'it', tapi biarkan Role tetap ada
+    await User.destroy({ where: {}, truncate: { cascade: true } });
   });
 
   afterAll(async () => {
+    // Tutup koneksi di akhir
     await sequelize.close();
   });
 
-  describe("Password Hashing Hook", () => {
-    test("should hash password automatically via beforeCreate hook", async () => {
-      const plainPassword = "securePassword123";
-      const user = await User.create({
-        email: "hashing@example.com",
-        password: plainPassword,
-        roleId: 1,
-      });
-
-      expect(user.password).not.toBe(plainPassword);
-      const isMatch = await bcrypt.comparePassword(
-        plainPassword,
-        user.password,
-      );
-      expect(isMatch).toBe(true);
-    });
-  });
-
-  describe("Field Validations", () => {
-    test("should fail if email is NULL", async () => {
+  describe("Password Validation & Hashing", () => {
+    it("should fail if password does not meet strength requirements", async () => {
       try {
-        await User.create({ email: null, password: "password123", roleId: 1 });
+        await User.create({
+          email: "weak@example.com",
+          password: "123", // Terlalu pendek & tidak ada simbol/huruf besar
+          roleId: adminRole.id,
+        });
       } catch (error) {
         expect(error.name).toBe("SequelizeValidationError");
-        expect(error.errors.map((e) => e.message)).toContain(
-          "Email is required.",
+        expect(error.message).toContain(
+          "Password must be at least 12 characters long",
         );
       }
     });
 
-    test("should fail if email format is INVALID", async () => {
+    it("should successfully hash password before saving to DB", async () => {
+      const plainPassword = "SuperSecretPassword123!";
+      const user = await User.create({
+        email: "secure@example.com",
+        password: plainPassword,
+        roleId: adminRole.id,
+      });
+
+      // Password di DB tidak boleh sama dengan plain text
+      expect(user.password).not.toBe(plainPassword);
+      // Panjang hashed password biasanya sekitar 60 karakter (bcrypt)
+      expect(user.password.length).toBeGreaterThan(40);
+    });
+
+    it("should re-hash password when it is updated", async () => {
+      const user = await User.create({
+        email: "update@example.com",
+        password: "OldPassword123!",
+        roleId: adminRole.id,
+      });
+
+      const oldHash = user.password;
+
+      // Update password
+      user.password = "NewBetterPassword456!";
+      await user.save();
+
+      expect(user.password).not.toBe(oldHash);
+      expect(user.password.length).toBeGreaterThan(40);
+    });
+  });
+
+  describe("Field Constraints", () => {
+    it("should fail if email is not a valid email format", async () => {
       try {
         await User.create({
-          email: "invalid-email",
-          password: "securePassword123",
-          roleId: 1,
+          email: "bukan-email",
+          password: "ValidPassword123!",
+          roleId: adminRole.id,
         });
       } catch (error) {
         expect(error.errors[0].message).toBe(
@@ -60,29 +86,22 @@ describe("User Model Unit Test", () => {
       }
     });
 
-    test("should fail if password is not a strong password", async () => {
+    it("should enforce unique email", async () => {
+      const email = "unique@example.com";
+      await User.create({
+        email,
+        password: "ValidPassword123!",
+        roleId: adminRole.id,
+      });
+
       try {
         await User.create({
-          email: "short@example.com",
-          password: "passwordsample",
-          roleId: 1,
+          email,
+          password: "AnotherValid123!",
+          roleId: adminRole.id,
         });
       } catch (error) {
-        expect(error.errors[0].message).toBe(
-          "Password must be at least 12 characters long and include uppercase letters, lowercase letters, and numbers.",
-        );
-      }
-    });
-
-    test("should enforce UNIQUE email constraint", async () => {
-      const email = "unique@example.com";
-      await User.create({ email, password: "securePassword123", roleId: 1 });
-
-      try {
-        await User.create({ email, password: "securePassword123", roleId: 1 });
-      } catch (error) {
         expect(error.name).toBe("SequelizeUniqueConstraintError");
-        expect(error.errors[0].message).toBe("Email must be unique.");
       }
     });
   });

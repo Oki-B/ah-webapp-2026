@@ -18,12 +18,19 @@ const handleSequelizeError = (err) => {
   let errorCode = "DATABASE_ERROR";
   let details = null;
 
-  if (err.name === "SequelizeValidationError" || err.name === "SequelizeUniqueConstraintError") {
-    message = err.name === "SequelizeUniqueConstraintError" 
-      ? "Data sudah ada (duplikat)" 
-      : "Validasi database gagal";
-    errorCode = err.name === "SequelizeUniqueConstraintError" ? "DUPLICATE_ENTRY" : "DB_VALIDATION_ERROR";
-    
+  if (
+    err.name === "SequelizeValidationError" ||
+    err.name === "SequelizeUniqueConstraintError"
+  ) {
+    message =
+      err.name === "SequelizeUniqueConstraintError"
+        ? "Data sudah ada (duplikat)"
+        : "Validasi database gagal";
+    errorCode =
+      err.name === "SequelizeUniqueConstraintError"
+        ? "DUPLICATE_ENTRY"
+        : "DB_VALIDATION_ERROR";
+
     // Ambil detail field yang bermasalah dari Sequelize biar konsisten sama Zod
     details = err.errors.map((e) => ({
       field: e.path,
@@ -37,7 +44,22 @@ const handleSequelizeError = (err) => {
   return error;
 };
 
-// 3. MAIN MIDDLEWARE
+// 3. Helper: Mapping JWT (Authentication)
+const handleJWTError = (err) => {
+  let message = "Token tidak valid";
+  let errorCode = "INVALID_TOKEN";
+
+  if (err.name === "TokenExpiredError") {
+    message = "Sesi Anda telah berakhir, silakan login ulang";
+    errorCode = "TOKEN_EXPIRED";
+  }
+
+  const error = new AppError(message, 401);
+  error.errorCode = errorCode;
+  return error;
+};
+
+//  MAIN MIDDLEWARE
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
@@ -48,21 +70,33 @@ const errorHandler = (err, req, res, next) => {
     error = handleZodError(err);
   } else if (err.name?.startsWith("Sequelize")) {
     error = handleSequelizeError(err);
+  } else if (
+    err.name === "JsonWebTokenError" ||
+    err.name === "TokenExpiredError"
+  ) {
+    error = handleJWTError(err);
   }
 
   // B. Tentukan errorCode (Prioritas titipan -> Default status)
   const errorCode =
     error.errorCode ||
-    (error.statusCode === 401 ? "UNAUTHORIZED" : 
-     error.statusCode === 403 ? "FORBIDDEN" : 
-     error.statusCode === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR");
+    (error.statusCode === 401
+      ? "UNAUTHORIZED"
+      : error.statusCode === 403
+        ? "FORBIDDEN"
+        : error.statusCode === 404
+          ? "NOT_FOUND"
+          : "INTERNAL_SERVER_ERROR");
 
   // C. Susun Final Response
   const response = {
     status: error.statusCode >= 500 ? "error" : "fail",
     error_type: errorCode,
-    message: error.message,
-    ...(error.details && { details: error.details }), // Hanya muncul jika ada details
+    message:
+      error.statusCode === 500 && process.env.NODE_ENV !== "development"
+        ? "Terjadi kesalahan pada server kami"
+        : error.message,
+    ...(error.details && { details: error.details }),
   };
 
   // D. Development Logging & Stack Trace
@@ -72,7 +106,7 @@ const errorHandler = (err, req, res, next) => {
       type: err.name,
       message: err.message,
       path: req.path,
-      ...(error.details && { details: error.details })
+      ...(error.details && { details: error.details }),
     });
   }
 

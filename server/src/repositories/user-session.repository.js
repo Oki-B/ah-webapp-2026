@@ -68,6 +68,13 @@ class UserSessionRepository extends BaseRepository {
     });
   }
 
+  async findSessionById(id, options = {}) {
+    return await this.model.findOne({
+      where: { id },
+      ...options,
+    });
+  }
+
   async updateSessionById(id, data, options = {}) {
     return await this.model.update(data, {
       where: { id },

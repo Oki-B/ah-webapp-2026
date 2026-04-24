@@ -7,9 +7,7 @@ class AuthController {
     try {
       const { email, password } = req.body;
       const deviceInfo = extractClientInfo(req);
-      console.log("Device Info:", deviceInfo); // Debugging: Pastikan deviceInfo terisi dengan benar
       const result = await authService.login(email, password, deviceInfo);
-      console.log(result);
 
       // Gunakan spread operator untuk mengambil semua config cookie sekaligus
       res.cookie("refresh_token", result.refreshToken, {
