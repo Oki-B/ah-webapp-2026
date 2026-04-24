@@ -2,16 +2,22 @@ require("dotenv").config({
   path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
   override: true,
 });
+
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const { errorHandler, globalLimiter } = require("./middleware/"); // Pastikan export-nya benar
+const { errorHandler, globalLimiter } = require("./middlewares"); // Pastikan export-nya benar
 const AppError = require("./utils/app-error.helper"); // Import class error kamu
 
 const app = express();
 const router = require("./routes/");
 
-app.set("trust proxy", true); // Penting untuk rate limiter yang berada di belakang proxy (misal: Nginx, Heroku, dll)
+// app.set("trust proxy", true); // Penting untuk rate limiter yang berada di belakang proxy (misal: Nginx, Heroku, dll)
+if (process.env.NODE_ENV === "test") {
+  app.set("trust proxy", false);
+} else {
+  app.set("trust proxy", true);
+}
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

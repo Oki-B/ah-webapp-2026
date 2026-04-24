@@ -55,7 +55,6 @@ class SessionService {
 
   async refreshSession({ oldRefreshToken, deviceInfo, transaction }) {
     // Find old session by hashed token
-    console.log("Old Refresh Token (raw):", oldRefreshToken); // Debugging: Pastikan token diterima
     const hashedToken = hashToken(oldRefreshToken);
     const session = await userSessionRepository.findValidSessionByToken(
       hashedToken,

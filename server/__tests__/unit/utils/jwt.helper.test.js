@@ -9,8 +9,8 @@ describe("JWT Helper Utility", () => {
   const originalEnv = process.env;
 
   beforeAll(() => {
-    process.env.JWT_ACCESS_SECRET = "access-secret-test";
-    process.env.JWT_ACCESS_EXPIRES_IN = "15m";
+    process.env.ACCESS_TOKEN_SECRET = "access-secret-test";
+    process.env.ACCESS_TOKEN_EXPIRES_IN = "15m";
   });
 
   afterAll(() => {
@@ -24,7 +24,7 @@ describe("JWT Helper Utility", () => {
       const token = generateAccessToken(mockPayload);
       expect(token).toBeDefined();
 
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
       expect(decoded.id).toBe(mockPayload.id);
       expect(decoded.role).toBe(mockPayload.role);
     });
@@ -46,7 +46,7 @@ describe("JWT Helper Utility", () => {
       // Kita buat token yang expired-nya 0 detik
       const expiredToken = jwt.sign(
         mockPayload,
-        process.env.JWT_ACCESS_SECRET,
+        process.env.ACCESS_TOKEN_SECRET,
         {
           expiresIn: "0s",
         },

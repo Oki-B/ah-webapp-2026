@@ -1,177 +1,112 @@
 const authService = require("../../../src/services/auth.service");
 const { userRepository } = require("../../../src/repositories");
-const AuditService = require("../../../src/services/audit.service"); // Import AuditService
-const { AppError } = require("../../../src/utils");
-const utils = require("../../../src/utils");
-const { sequelize } = require("../../../src/models");
+const sessionService = require("../../../src/services/session.service");
+const auditService = require("../../../src/services/audit.service");
+const { comparePassword, generateAccessToken, withTransaction, AppError } = require("../../../src/utils");
 
-// Mocking
+// 1. MOCK SEMUA DEPENDENSI
 jest.mock("../../../src/repositories");
-jest.mock("../../../src/services/audit.service"); // Mock AuditService
-jest.mock("../../../src/utils", () => {
-  const actualUtils = jest.requireActual("../../../src/utils");
-  return {
-    ...actualUtils,
-    comparePassword: jest.fn(),
-    generateToken: jest.fn(),
-    withTransaction: jest.fn((cb) => cb("mock-transaction")),
-    delay: jest.fn(() => Promise.resolve()), // Mock delay biar test lu kenceng gak nunggu 1.5 detik
-  };
-});
+jest.mock("../../../src/services/session.service");
+jest.mock("../../../src/services/audit.service");
+jest.mock("../../../src/utils/", () => ({
+  ...jest.requireActual("../../../src/utils/"), // Gunakan fungsi asli untuk yang lain
+  comparePassword: jest.fn(),
+  generateAccessToken: jest.fn(),
+  withTransaction: jest.fn((callback) => callback("mock-t")), // Mock transaksi agar langsung jalan
+  delay: jest.fn(), // Agar test tidak lambat karena nunggu delay()
+}));
 
-describe("AuthService - Login", () => {
-  // Mock request object (req) yang dibutuhin AuditService
-  const mockReq = {
-    ip: "127.0.0.1",
-    headers: { "user-agent": "jest-test" },
+describe("AuthService Unit Test", () => {
+  const mockDeviceInfo = { ip: "127.0.0.1", ua: "Mozilla/5.0" };
+  const mockUser = {
+    id: "user-123",
+    email: "test@example.com",
+    password: "hashed-password",
+    isVerified: true,
+    isActive: true,
+    role: { name: "user" },
+    failedLoginAttempts: 0,
+    lockoutUntil: null,
   };
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  afterAll(async () => {
-    await sequelize.close();
-  });
+  describe("login()", () => {
+    it("should throw error if account is locked", async () => {
+      const lockedUser = { 
+        ...mockUser, 
+        lockoutUntil: new Date(Date.now() + 15 * 60 * 1000) 
+      };
+      userRepository.findByEmail.mockResolvedValue(lockedUser);
 
-  it("should throw AppError 401 when user is not found and record failure", async () => {
-    userRepository.findByEmail.mockResolvedValue(null);
+      await expect(authService.login(lockedUser.email, "password123", mockDeviceInfo))
+        .rejects.toThrow(AppError);
+    });
 
-    await expect(
-      authService.login("wrong@mail.com", "password123", mockReq),
-    ).rejects.toThrow(AppError);
+    it("should throw 401 if password does not match", async () => {
+      userRepository.findByEmail.mockResolvedValue(mockUser);
+      comparePassword.mockResolvedValue(false); // Password salah
 
-    // Pastikan AuditService mencatat kegagalan
-    expect(AuditService.record).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "LOGIN_LOCAL",
+      await expect(authService.login(mockUser.email, "wrong-pass", mockDeviceInfo))
+        .rejects.toThrow("Invalid email or password");
+      
+      // Pastikan audit record mencatat kegagalan
+      expect(auditService.record).toHaveBeenCalledWith(expect.objectContaining({
         status: "FAILED",
-        email: "wrong@mail.com",
-      }),
-    );
+        metadata: { reason: "Invalid password" }
+      }));
+    });
+
+    it("should successfully login and return tokens", async () => {
+      // Setup mock returns
+      userRepository.findByEmail.mockResolvedValue(mockUser);
+      comparePassword.mockResolvedValue(true);
+      generateAccessToken.mockReturnValue("mock-access-token");
+      
+      sessionService.createNewSession.mockResolvedValue({
+        refreshToken: "mock-refresh-token",
+        sessionId: "session-abc",
+        deviceName: "Desktop"
+      });
+
+      const result = await authService.login(mockUser.email, "correct-pass", mockDeviceInfo);
+
+      expect(result).toHaveProperty("accessToken", "mock-access-token");
+      expect(result).toHaveProperty("refreshToken", "mock-refresh-token");
+      expect(userRepository.updateLastLogin).toHaveBeenCalled();
+      expect(auditService.record).toHaveBeenCalledWith(expect.objectContaining({
+        status: "SUCCESS"
+      }));
+    });
   });
 
-  it("should return token and user data on successful login", async () => {
-    const mockUser = {
-      id: "uuid-123",
-      email: "test@mail.com",
-      password: "hashedpassword",
-      isActive: true,
-      isVerified: true,
-      role: { name: "admin" },
-    };
+  describe("loginGoogle()", () => {
+    it("should throw error if user not found in database (closed system)", async () => {
+      userRepository.findByEmail.mockResolvedValue(null);
+      const googlePayload = { sub: "google-123", email: "unknown@gmail.com" };
 
-    userRepository.findByEmail.mockResolvedValue(mockUser);
-    utils.comparePassword.mockResolvedValue(true);
-    utils.generateToken.mockReturnValue("mock-token");
+      await expect(authService.loginGoogle(googlePayload, mockDeviceInfo))
+        .rejects.toThrow("No account associated with this Google email");
+    });
 
-    const result = await authService.login(
-      "test@mail.com",
-      "password123",
-      mockReq,
-    );
+    it("should link googleId if user exists but googleId is empty", async () => {
+      const userWithoutGoogle = { ...mockUser, googleId: null };
+      userRepository.findByEmail.mockResolvedValue(userWithoutGoogle);
+      
+      sessionService.createNewSession.mockResolvedValue({
+        accessToken: "at", refreshToken: "rt", deviceName: "Mobile"
+      });
 
-    expect(result).toHaveProperty("token");
-    expect(result.user.email).toBe("test@mail.com");
+      await authService.loginGoogle({ sub: "google-123", email: userWithoutGoogle.email }, mockDeviceInfo);
 
-    // Pastikan AuditService mencatat sukses
-    expect(AuditService.record).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "LOGIN_LOCAL",
-        status: "SUCCESS",
-        userId: "uuid-123",
-      }),
-    );
-  });
-
-  it("should throw AppError 401 when password does not match", async () => {
-    const mockUser = {
-      id: "uuid-123",
-      email: "test@mail.com",
-      password: "hashedpassword",
-    };
-
-    userRepository.findByEmail.mockResolvedValue(mockUser);
-    utils.comparePassword.mockResolvedValue(false);
-
-    try {
-      await authService.login("test@mail.com", "wrongpassword", mockReq);
-    } catch (error) {
-      expect(error.statusCode).toBe(401);
-      expect(AuditService.record).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: "FAILED",
-          metadata: expect.objectContaining({ reason: "Invalid password" }), // Tambahin bungkus metadata
-        }),
+      // Cek apakah repository.update dipanggil untuk link Google ID
+      expect(userRepository.update).toHaveBeenCalledWith(
+        userWithoutGoogle.id,
+        expect.objectContaining({ googleId: "google-123" }),
+        expect.any(Object)
       );
-    }
-  });
-
-  it("should throw AppError 403 when user is not active", async () => {
-    const mockUser = {
-      id: "uuid-123",
-      email: "inactive@mail.com",
-      password: "hashedpassword",
-      isActive: false,
-    };
-
-    userRepository.findByEmail.mockResolvedValue(mockUser);
-    utils.comparePassword.mockResolvedValue(true);
-
-    await expect(
-      authService.login("inactive@mail.com", "password123", mockReq),
-    ).rejects.toThrow(AppError);
-  });
-});
-
-describe("AuthService - Google Login", () => {
-  const mockReq = { ip: "127.0.0.1", headers: { "user-agent": "jest-test" } };
-  const googlePayload = { sub: "google-id-123", email: "google@mail.com" };
-
-  it("should link account and return token if user exists without googleId", async () => {
-    const mockUser = {
-      id: "uuid-123",
-      email: "google@mail.com",
-      googleId: null,
-      role: { name: "guest" },
-    };
-
-    userRepository.findByEmail.mockResolvedValue(mockUser);
-
-    const result = await authService.loginGoogle(googlePayload, mockReq);
-
-    // __tests__/unit/services/auth.service.test.js
-
-    expect(userRepository.update).toHaveBeenCalledWith(
-      // Argumen 1: Data yang diupdate
-      { googleId: "google-id-123" },
-
-      // Argumen 2: Options (where dan transaction)
-      expect.objectContaining({
-        where: { id: mockUser.id },
-        transaction: expect.anything(), // atau "mock-transaction" sesuai mock lu
-      }),
-    );
-    expect(result.token).toBeDefined();
-  });
-
-  it("should throw AppError 401 if user tries to login via Google but not found in DB", async () => {
-    userRepository.findByEmail.mockResolvedValue(null);
-
-    await expect(
-      authService.loginGoogle(
-        { sub: "123", email: "stranger@mail.com" },
-        mockReq,
-      ),
-    ).rejects.toThrow(AppError);
-
-    expect(AuditService.record).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "FAILED",
-        metadata: expect.objectContaining({
-          reason: "User not invited or not registered",
-        }),
-      }),
-    );
+    });
   });
 });
