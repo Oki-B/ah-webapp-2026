@@ -59,10 +59,12 @@ class AuthController {
     try {
       const oldRefreshToken = req.cookies.refreshToken;
       const deviceInfo = extractClientInfo(req);
+      const { email } = req.user || {}; // Ambil email dari req.user jika tersedia
 
       const result = await sessionService.refreshSession({
         oldRefreshToken,
         deviceInfo,
+        email,
       });
 
       // Konsistensi penggunaan constant di refresh token rotation

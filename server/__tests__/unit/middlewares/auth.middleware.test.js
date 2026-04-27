@@ -1,5 +1,8 @@
 const jwt = require("jsonwebtoken");
-const { authenticate, validateGoogleToken } = require("../../../src/middlewares/auth.middleware");
+const {
+  authenticate,
+  validateGoogleToken,
+} = require("../../../src/middlewares/auth.middleware");
 const { userRepository } = require("../../../src/repositories");
 const { AppError, verifyGoogleToken } = require("../../../src/utils");
 
@@ -42,10 +45,12 @@ describe("Auth Middleware Unit Test", () => {
 
       await authenticate(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.objectContaining({
-        message: "Invalid token",
-        statusCode: 401
-      }));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Invalid token",
+          statusCode: 401,
+        }),
+      );
     });
 
     it("should throw 404 if user in token doesn't exist in DB", async () => {
@@ -55,35 +60,69 @@ describe("Auth Middleware Unit Test", () => {
 
       await authenticate(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.objectContaining({
-        message: "User not found",
-        statusCode: 404
-      }));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "User not found",
+          statusCode: 404,
+        }),
+      );
     });
 
     it("should throw 403 if user is inactive", async () => {
       req.headers.authorization = "Bearer valid-token";
       jwt.verify.mockReturnValue({ id: "user-123" });
-      userRepository.findById.mockResolvedValue({ id: "user-123", isActive: false });
+      userRepository.findById.mockResolvedValue({
+        id: "user-123",
+        isActive: false,
+      });
 
       await authenticate(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.objectContaining({
-        message: "Account is inactive. Please contact support.",
-        statusCode: 403
-      }));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Account is inactive. Please contact support.",
+          statusCode: 403,
+        }),
+      );
     });
 
     it("should pass and attach user to req if everything is valid", async () => {
-      const mockUser = { id: "user-123", email: "test@me.com", isActive: true };
+      // 1. Siapkan Mock Data Payload JWT
+      const mockPayload = {
+        id: "user-123",
+        sessionId: "session-456",
+      };
+
+      // 2. Siapkan Mock Data User dari Database
+      const mockUser = {
+        id: "user-123",
+        email: "test@me.com",
+        role: { name: "guest" },
+        isActive: true,
+      };
+
       req.headers.authorization = "Bearer valid-token";
-      jwt.verify.mockReturnValue({ id: "user-123" });
+
+      // 3. Setup Mocks
+      // Pastikan jwt.verify mengembalikan mockPayload
+      jwt.verify.mockReturnValue(mockPayload);
+
+      // Pastikan database mengembalikan mockUser
       userRepository.findById.mockResolvedValue(mockUser);
 
+      // 4. Eksekusi Middleware
       await authenticate(req, res, next);
 
-      expect(req.user).toEqual(mockUser);
-      expect(next).toHaveBeenCalledWith(); // Dipanggil tanpa argumen (success)
+      // 5. Assertions (Pembuktian)
+      expect(req.user).toEqual({
+        id: mockUser.id,
+        email: mockUser.email,
+        role: mockUser.role.name,
+        sessionId: mockPayload.sessionId, // Ambil dari mockPayload yang kita buat di atas
+      });
+
+      // Pastikan next() dipanggil tanpa error
+      expect(next).toHaveBeenCalledWith();
     });
   });
 
@@ -93,10 +132,12 @@ describe("Auth Middleware Unit Test", () => {
 
       await validateGoogleToken(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.objectContaining({
-        message: "Google token missing",
-        statusCode: 400
-      }));
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Google token missing",
+          statusCode: 400,
+        }),
+      );
     });
 
     it("should attach payload to req.googleUser on success", async () => {

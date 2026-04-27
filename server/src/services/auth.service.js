@@ -11,8 +11,8 @@ const sessionService = require("./session.service");
 
 class AuthService {
   async login(email, password, deviceInfo) {
+    // Checking lockout status before anything else
     const user = await userRepository.findByEmail(email);
-
     if (user?.lockoutUntil && user.lockoutUntil > new Date()) {
       const remaining = Math.ceil(
         (user.lockoutUntil - new Date()) / (60 * 1000),
@@ -23,60 +23,43 @@ class AuthService {
       );
     }
 
-    const triggerFailure = async (reason) => {
-      if (user) {
-        await this._handleFailedLogin(user);
-      }
-      await delay(1500);
-      await auditService.record({
-        action: "LOGIN_LOCAL",
-        status: "FAILED",
-        email,
-        metadata: { reason },
-        ip: deviceInfo.ip,
-        ua: deviceInfo.ua,
-      });
-      throw new AppError("Invalid email or password", 401);
-    };
+    // Generate response data and handle login logic inside transaction
+    let loginError = null;
 
-    if (!user || !user.password)
-      await triggerFailure("User not found or no password set");
+    // Handle login logic inside transaction to ensure audit log consistency
+    const result = await withTransaction(async (transaction) => {
+      // handle failed login with centralized function
+      const handleFailure = async (reason, status = 401) => {
+        if (user) {
+          await this._handleFailedLogin(user, transaction);
+        }
+        await auditService.record({
+          action: "LOGIN_LOCAL",
+          status: "FAILED",
+          email,
+          metadata: { reason },
+          ip: deviceInfo.ip,
+          ua: deviceInfo.ua,
+          transaction,
+        });
+        loginError = { message: reason, status };
+        return null;
+      };
 
-    const isMatch = await comparePassword(password, user.password);
-    if (!isMatch) await triggerFailure("Invalid password");
+      if (!user || !user.password)
+        await handleFailure("Invalid email or password");
 
-    if (!user.isVerified) {
-      await delay(1500);
-      await auditService.record({
-        action: "LOGIN_LOCAL",
-        status: "FAILED",
-        email,
-        metadata: { reason: "Account not verified" },
-        ip: deviceInfo.ip,
-        ua: deviceInfo.ua,
-      });
-      throw new AppError(
-        "Account is not verified. Please check your email.",
-        403,
-      );
-    }
+      const isMatch = await comparePassword(password, user.password);
+      if (!isMatch) return await handleFailure("Invalid email or password");
 
-    if (!user.isActive) {
-      await delay(1500);
-      await auditService.record({
-        action: "LOGIN_LOCAL",
-        status: "FAILED",
-        email,
-        metadata: { reason: "Account inactive" },
-        ip: deviceInfo.ip,
-        ua: deviceInfo.ua,
-      });
-      throw new AppError("Account is inactive. Please contact support.", 403);
-    }
+      if (!user.isVerified)
+        return await handleFailure("Account not verified", 403);
 
-    return await withTransaction(async (transaction) => {
+      if (!user.isActive)
+        return await handleFailure("Account is inactive", 403);
+
+      // handle successful login
       await userRepository.updateLastLogin(user.id, transaction);
-
       const sessionData = await this._generateResponse(
         user,
         deviceInfo,
@@ -91,23 +74,31 @@ class AuthService {
         ua: deviceInfo.ua,
         ip: deviceInfo.ip,
         deviceName: sessionData.deviceName,
+        metadata: { sessionId: sessionData.sessionId },
         transaction,
       });
 
       return {
         accessToken: sessionData.accessToken,
         refreshToken: sessionData.refreshToken,
-        user: sessionData.user,
       };
     });
+
+    if (loginError) {
+      // Optional: Tambahkan delay untuk mencegah brute-force
+      await delay(1500);
+      throw new AppError(loginError.message, loginError.status);
+    }
+
+    return result;
   }
 
   async loginGoogle(googlePayload, deviceInfo) {
     const { sub: googleId, email } = googlePayload;
 
-    return await withTransaction(async (t) => {
+    return await withTransaction(async (transaction) => {
       // 1. Cari user berdasarkan email
-      let user = await userRepository.findByEmail(email, { transaction: t });
+      let user = await userRepository.findByEmail(email, { transaction });
 
       // Jika user tidak ditemukan (SaaS lu berbasis undangan/registrasi tertutup)
       if (!user) {
@@ -118,7 +109,7 @@ class AuthService {
           metadata: { reason: "User not invited or not registered" },
           ip: deviceInfo.ip,
           ua: deviceInfo.ua,
-          transaction: t,
+          transaction,
         });
         throw new AppError("No account associated with this Google email", 401);
       }
@@ -134,14 +125,14 @@ class AuthService {
           metadata: { reason: "Account inactive" },
           ip: deviceInfo.ip,
           ua: deviceInfo.ua,
-          transaction: t,
+          transaction,
         });
         throw new AppError("Account is inactive. Please contact support.", 403);
       }
 
       // 3. Link Google ID jika belum ada (First time Google Login)
       if (!user.googleId) {
-        await userRepository.update(user.id, { googleId }, { transaction: t });
+        await userRepository.update(user.id, { googleId }, { transaction });
 
         await auditService.record({
           action: "LINK_GOOGLE",
@@ -151,7 +142,7 @@ class AuthService {
           ip: deviceInfo.ip,
           ua: deviceInfo.ua,
           metadata: { message: "Linked Google account to existing user" },
-          transaction: t,
+          transaction,
         });
       }
 
@@ -164,14 +155,14 @@ class AuthService {
           lockoutUntil: null,
           isVerified: true, // Pastikan terverifikasi karena Google sudah valid
         },
-        { transaction: t },
+        { transaction },
       );
 
       // 5. Generate Session & Tokens (Memanggil SessionService)
       const sessionData = await sessionService.createNewSession(
         user.id,
         deviceInfo,
-        t,
+        transaction,
       );
 
       // 6. Record Success Audit
@@ -183,7 +174,7 @@ class AuthService {
         ip: deviceInfo.ip,
         ua: deviceInfo.ua,
         deviceName: sessionData.deviceName,
-        transaction: t,
+        transaction,
       });
 
       return {
@@ -198,6 +189,7 @@ class AuthService {
     });
   }
 
+  // ----- Helper Functions ----- //
   async _generateResponse(user, deviceInfo, transaction = null) {
     const { refreshToken, sessionId, deviceName } =
       await sessionService.createNewSession({
@@ -208,7 +200,6 @@ class AuthService {
 
     const payload = {
       userId: user.id,
-      role: user.role.name,
       sessionId,
     };
 
@@ -217,30 +208,28 @@ class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, role: user.role.name },
+      sessionId,
       deviceName,
     };
   }
 
-  async _handleFailedLogin(user) {
-    // Kita jalankan transaksi kecil di sini khusus untuk update attempts
-    return await withTransaction(async (t) => {
-      const attempts = (user.failedLoginAttempts || 0) + 1;
-      const updateData = { failedLoginAttempts: attempts };
+  // Centralized function to handle failed login attempts and lockout logic
+  async _handleFailedLogin(user, transaction = null) {
+    const attempts = (user.failedLoginAttempts || 0) + 1;
+    const updateData = { failedLoginAttempts: attempts };
 
-      if (attempts >= 5) {
-        // Lockout 15 menit jika sudah 5 kali salah
-        updateData.lockoutUntil = new Date(Date.now() + 15 * 60 * 1000);
-        updateData.failedLoginAttempts = 0; // Reset counter setelah di-lock
-      }
+    if (attempts >= 5) {
+      // Lockout 15 menit jika sudah 5 kali salah
+      updateData.lockoutUntil = new Date(Date.now() + 15 * 60 * 1000);
+      updateData.failedLoginAttempts = 0; // Reset counter setelah di-lock
+    }
 
-      await userRepository.update(user.id, updateData, { transaction: t });
+    await userRepository.update(user.id, updateData, { transaction });
 
-      return {
-        isLocked: attempts >= 5,
-        remainingAttempts: 5 - attempts,
-      };
-    });
+    return {
+      isLocked: attempts >= 5,
+      remainingAttempts: 5 - attempts,
+    };
   }
 }
 
