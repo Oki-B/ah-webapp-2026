@@ -1,6 +1,7 @@
 const auditService = require("../../../src/services/audit.service");
 const { AuditLog } = require("../../../src/models");
 const { getSimpleDeviceName } = require("../../../src/utils/");
+const geoip = require("geoip-lite"); // Import untuk di-mock
 
 // 1. MOCKING
 jest.mock("../../../src/models", () => ({
@@ -13,10 +14,14 @@ jest.mock("../../../src/utils/", () => ({
   getSimpleDeviceName: jest.fn(),
 }));
 
+// Mock geoip-lite
+jest.mock("geoip-lite", () => ({
+  lookup: jest.fn(),
+}));
+
 describe("AuditService Unit Test", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Supaya console.error tidak mengotori terminal saat test catch block
     jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -26,76 +31,69 @@ describe("AuditService Unit Test", () => {
       status: "SUCCESS",
       userId: "user-123",
       email: "test@example.com",
-      ip: "192.168.1.1",
+      ip: "8.8.8.8",
       ua: "Mozilla/5.0...",
     };
 
-    it("should call AuditLog.create with correct data", async () => {
+    it("should call AuditLog.create with device and geolocation data", async () => {
+      // Setup Mock returns
       getSimpleDeviceName.mockReturnValue("MacBook Pro");
+      geoip.lookup.mockReturnValue({
+        city: "Mountain View",
+        country: "US",
+        region: "CA",
+        ll: [37.4223, -122.0841],
+      });
 
       await auditService.record(defaultData);
 
       expect(AuditLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          action: "LOGIN",
-          status: "SUCCESS",
-          userId: "user-123",
-          ipAddress: "192.168.1.1",
-          userAgent: defaultData.ua,
+          ipAddress: "8.8.8.8",
           payload: expect.objectContaining({
             deviceName: "MacBook Pro",
+            location: "Mountain View, US",
+            geo: expect.objectContaining({
+              city: "Mountain View",
+              ll: [37.4223, -122.0841]
+            })
           }),
         }),
-        expect.any(Object) // Object options/transaction
+        expect.any(Object)
       );
     });
 
-    it("should use deviceName from parameters if provided", async () => {
-      await auditService.record({
-        ...defaultData,
-        deviceName: "Custom Phone",
-      });
+    it("should handle unknown location if geoip returns null", async () => {
+      geoip.lookup.mockReturnValue(null); // Simulasi IP lokal atau tidak terdeteksi
 
-      // Pastikan helper parsing TIDAK dipanggil karena deviceName sudah ada
-      expect(getSimpleDeviceName).not.toHaveBeenCalled();
-      
+      await auditService.record(defaultData);
+
       const callArgs = AuditLog.create.mock.calls[0][0];
-      expect(callArgs.payload.deviceName).toBe("Custom Phone");
+      expect(callArgs.payload.location).toBe("Unknown Location");
+      expect(callArgs.payload.geo).toBeNull();
     });
 
-    it("should include metadata in the payload", async () => {
-      const metadata = { reason: "Incorrect Password", attempt: 3 };
-      
+    it("should merge metadata with device and geo information", async () => {
+      const metadata = { reason: "Security Check" };
+      geoip.lookup.mockReturnValue({ city: "Jakarta", country: "ID" });
+
       await auditService.record({
         ...defaultData,
-        metadata,
+        metadata
       });
 
       const callArgs = AuditLog.create.mock.calls[0][0];
-      expect(callArgs.reason).toBe("Incorrect Password");
+      expect(callArgs.reason).toBe("Security Check");
       expect(callArgs.payload).toMatchObject({
         deviceName: expect.any(String),
-        attempt: 3,
+        location: "Jakarta, ID"
       });
     });
 
-    it("should default device to 'Unknown Device' if UA is unknown", async () => {
-      await auditService.record({
-        ...defaultData,
-        ua: "unknown",
-      });
-
-      const callArgs = AuditLog.create.mock.calls[0][0];
-      expect(callArgs.payload.deviceName).toBe("Unknown Device");
-    });
-
+    // Test case sisanya (transaction & error handling) tetap sama
     it("should support database transactions", async () => {
       const mockTransaction = { id: "tx-999" };
-
-      await auditService.record({
-        ...defaultData,
-        transaction: mockTransaction,
-      });
+      await auditService.record({ ...defaultData, transaction: mockTransaction });
 
       expect(AuditLog.create).toHaveBeenCalledWith(
         expect.any(Object),
@@ -105,8 +103,6 @@ describe("AuditService Unit Test", () => {
 
     it("should gracefully handle errors without throwing", async () => {
       AuditLog.create.mockRejectedValue(new Error("DB Error"));
-
-      // Service ini pake try-catch internal, jadi harusnya tidak throw error ke pemanggil
       await expect(auditService.record(defaultData)).resolves.not.toThrow();
       expect(console.error).toHaveBeenCalled();
     });

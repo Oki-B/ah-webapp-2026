@@ -1,4 +1,3 @@
-const user = require("../models/user");
 const { userSessionRepository } = require("../repositories");
 const {
   AppError,
@@ -7,10 +6,13 @@ const {
   hashToken,
   delay,
   generateAccessToken,
+  withTransaction,
 } = require("../utils/");
+const auditService = require("./audit.service");
 
 class SessionService {
-  async createNewSession({ userId, deviceInfo, transaction }) {
+  // ----- For Auth Controller ----- //
+  async createNewSession({ userId, deviceInfo, transaction = null }) {
     // extract device info
     const { ua, ip } = deviceInfo;
     const deviceName = getSimpleDeviceName(ua);
@@ -53,53 +55,80 @@ class SessionService {
     };
   }
 
-  async refreshSession({ oldRefreshToken, deviceInfo, transaction }) {
-    // Find old session by hashed token
-    const hashedToken = hashToken(oldRefreshToken);
-    const session = await userSessionRepository.findValidSessionByToken(
-      hashedToken,
-      { transaction },
-    );
+  async refreshSession({ oldRefreshToken, deviceInfo, email }) {
+    let refreshError = null;
 
-    // Validate session
-    if (!session) {
-      await delay(500); // Tambahkan delay untuk mitigasi brute-force
-      throw new AppError("Invalid refresh token", 401);
-    }
+    const result = await withTransaction(async (transaction) => {
+      // Find old session by hashed token
+      const hashedToken = hashToken(oldRefreshToken);
+      const session = await userSessionRepository.findValidSessionByToken(
+        hashedToken,
+        { transaction },
+      );
 
-    // if reused token detected (expired or revoked), revoke all sessions for security
-    if (session.expiresAt < new Date() || session.revokedAt) {
+      // Validate session
+      if (!session) {
+        refreshError = { message: "Invalid refresh token", statusCode: 401 };
+        return null;
+      }
+
+      // if reused token detected (expired or revoked), revoke all sessions for security
+      if (session.expiresAt < new Date() || session.revokedAt) {
+        const metadata = {
+          attemptedSessionId: session.id,
+          reason: "Old or revoked refresh token was used",
+        };
+
+        await this.revokeAllDevices(
+          session.userId,
+          email,
+          deviceInfo,
+          metadata,
+          transaction,
+        );
+
+        refreshError = {
+          message: "Token reused detected",
+          statusCode: 401,
+        };
+        return null;
+      }
+
+      // Revoke old session
       await userSessionRepository.revokeSessionById(session.id, {
         transaction,
       });
-      await delay(500); // Tambahkan delay untuk mitigasi brute-force
-      throw new AppError("Token reused detected", 401);
-    }
 
-    // Revoke old session
-    await userSessionRepository.revokeSessionById(session.id, { transaction });
+      // Create new session
+      const newSession = await this.createNewSession(
+        {
+          userId: session.userId,
+          deviceInfo,
+        },
+        { transaction },
+      );
 
-    // Create new session
-    const newSession = await this.createNewSession(
-      {
+      // Generate new access token
+      const accessToken = generateAccessToken({
         userId: session.userId,
-        deviceInfo,
-      },
-      { transaction },
-    );
+        sessionId: newSession.sessionId,
+      });
 
-    // Generate new access token
-    const accessToken = generateAccessToken({
-      userId: session.userId,
-      sessionId: newSession.sessionId,
+      return {
+        accessToken,
+        refreshToken: newSession.refreshToken,
+      };
     });
 
-    return {
-      accessToken,
-      refreshToken: newSession.refreshToken,
-    };
+    if (refreshError) {
+      await delay(500); // Optional: Add delay to mitigate brute-force attacks
+      throw new AppError(refreshError.message, refreshError.statusCode);
+    }
+
+    return result;
   }
 
+  // ----- For Session Controller ----- //
   async getActiveSessions(userId) {
     const sessions = await userSessionRepository.findAllValidSessionsByUserId(
       userId,
@@ -108,44 +137,128 @@ class SessionService {
     return { sessions, total: sessions.length };
   }
 
-  async revokeCurrentSession(refreshToken, transaction) {
-    const hashedToken = hashToken(refreshToken);
-    const session = await userSessionRepository.findValidSessionByToken(
-      hashedToken,
-      { transaction },
-    );
+  async revokeCurrentSession(refreshToken, email) {
+    return await withTransaction(async (transaction) => {
+      const hashedToken = hashToken(refreshToken);
+      const session = await userSessionRepository.findValidSessionByToken(
+        hashedToken,
+        { transaction },
+      );
 
-    if (!session) {
-      throw new AppError("Session not found", 404);
+      if (!session) {
+        throw new AppError("Session not found", 404);
+      }
+
+      await userSessionRepository.revokeSessionById(session.id, {
+        transaction,
+      });
+
+      await auditService.record({
+        action: "LOGOUT",
+        status: "SUCCESS",
+        userId: session.userId,
+        email,
+        ip: session.ip,
+        ua: session.ua,
+        metadata: { sessionId: session.id },
+        transaction,
+      });
+    });
+  }
+
+  async revokeFromDevice(userId, sessionId, email) {
+    return await withTransaction(async (transaction) => {
+      const session = await userSessionRepository.findSessionById(sessionId, {
+        transaction,
+      });
+
+      if (!session || session.userId !== userId) {
+        throw new AppError("Session not found", 404);
+      }
+
+      await userSessionRepository.revokeSessionById(sessionId, {
+        transaction,
+      });
+
+      await auditService.record({
+        action: "LOGOUT FROM DEVICE",
+        status: "SUCCESS",
+        userId: session.userId,
+        email,
+        ip: session.ip,
+        ua: session.ua,
+        metadata: { sessionId: session.id },
+        transaction,
+      });
+    });
+  }
+
+  async revokeOtherDevices(
+    userId,
+    currentSessionId,
+    email,
+    reason = "User initiated logout from other devices",
+  ) {
+    return await withTransaction(async (transaction) => {
+      const currentSession = await userSessionRepository.findSessionById(
+        currentSessionId,
+        {
+          transaction,
+        },
+      );
+      await userSessionRepository.revokeOtherSessions(
+        userId,
+        currentSessionId,
+        {
+          transaction,
+        },
+      );
+
+      await auditService.record({
+        action: "LOGOUT FROM OTHER DEVICES",
+        status: "SUCCESS",
+        userId: currentSession.userId,
+        email,
+        ip: currentSession.ip,
+        ua: currentSession.ua,
+        metadata: { currentSessionId: currentSession.id, reason },
+        transaction,
+      });
+    });
+  }
+
+  async revokeAllDevices(
+    userId,
+    email,
+    deviceInfo,
+    metadata = { reason: "User initiated logout from all devices" },
+    transaction = null,
+  ) {
+    // extract device info
+    const { ua, ip } = deviceInfo;
+
+    const revokeTransaction = async (t) => {
+      await userSessionRepository.revokeAllSessions(userId, {
+        t,
+      });
+
+      await auditService.record({
+        action: "LOGOUT FROM ALL DEVICES",
+        status: "SUCCESS",
+        userId,
+        email,
+        ip: ip,
+        ua: ua,
+        metadata,
+        t,
+      });
+    };
+
+    if (transaction) {
+      await revokeTransaction(transaction);
     }
 
-    await userSessionRepository.revokeSessionById(session.id, { transaction });
-  }
-
-  async revokeFromDevice(userId, sessionId, transaction) {
-    const session = await userSessionRepository.findSessionById(sessionId, {
-      transaction,
-    });
-
-    if (!session || session.userId !== userId) {
-      throw new AppError("Session not found", 404);
-    }
-
-    await userSessionRepository.revokeSessionById(sessionId, {
-      transaction,
-    });
-  }
-
-  async revokeOtherDevices(userId, currentSessionId, transaction) {
-    await userSessionRepository.revokeOtherSessions(userId, currentSessionId, {
-      transaction,
-    });
-  }
-
-  async revokeAllDevices(userId, transaction) {
-    await userSessionRepository.revokeAllSessions(userId, {
-      transaction,
-    });
+    return await withTransaction(revokeTransaction);
   }
 }
 

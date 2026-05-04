@@ -29,7 +29,13 @@ const authenticate = async (req, res, next) => {
       throw new AppError("Account is inactive. Please contact support.", 403);
     }
 
-    req.user = user; // Attach user to request object
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role.name,
+      sessionId: decoded.sessionId, // Attach sessionId dari token ke req.user
+    }; // Attach user to request object
+
     next();
   } catch (err) {
     if (err.name === "JsonWebTokenError") {

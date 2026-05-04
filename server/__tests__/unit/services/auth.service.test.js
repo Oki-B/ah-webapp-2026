@@ -55,7 +55,7 @@ describe("AuthService Unit Test", () => {
       // Pastikan audit record mencatat kegagalan
       expect(auditService.record).toHaveBeenCalledWith(expect.objectContaining({
         status: "FAILED",
-        metadata: { reason: "Invalid password" }
+        metadata: { reason: "Invalid email or password" }
       }));
     });
 

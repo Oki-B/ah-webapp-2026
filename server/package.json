@@ -7,7 +7,7 @@
     "dev": "nodemon src/server.js",
     "test": "cross-env NODE_ENV=test jest --setupFiles dotenv/config --runInBand --forceExit --detectOpenHandles",
     "test:watch": "cross-env NODE_ENV=test jest --setupFiles dotenv/config --watchAll",
-    "test:coverage": "cross-env NODE_ENV=test jest --setupFiles dotenv/config --runInBand --coverage",
+    "test:coverage": "cross-env NODE_ENV=test jest --setupFiles dotenv/config --runInBand --coverage --detectOpenHandles",
     "db:create:test": "cross-env NODE_ENV=test npx sequelize-cli db:create",
     "db:migrate:test": "cross-env NODE_ENV=test npx sequelize-cli db:migrate"
   },
@@ -22,6 +22,7 @@
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.2",
+    "geoip-lite": "^1.4.10",
     "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.20.0",
