@@ -1,13 +1,19 @@
 const express = require("express");
 const router = express.Router();
 
-const { authenticate } = require("../middlewares/");
+const { authenticate, validate } = require("../middlewares/");
+const { sessionController } = require("../controllers/");
+const { sessionSchema } = require("../validators/");
 
 router.use(authenticate); // Pastikan middleware ini benar-benar ada dan berfungsi
 
-router.get("/sessions"); // Dapatkan semua sesi aktif pengguna
-router.delete("/sessions/current"); // Hapus sesi saat ini (logout dari perangkat ini saja)
-router.delete("/sessions/others"); // Hapus semua sesi kecuali sesi saat ini (logout dari perangkat lain saja)
-router.delete("/sessions/:sessionId"); // Hapus sesi tertentu berdasarkan ID (logout dari perangkat tertentu)
+router.get("/sessions", sessionController.getSessions);
+router.delete("/sessions/current", sessionController.logout);
+router.delete("/sessions/others", sessionController.logoutOtherDevices);
+router.delete(
+  "/sessions/:sessionId",
+  validate(sessionSchema),
+  sessionController.logoutFromDevice,
+);
 
 module.exports = router;
