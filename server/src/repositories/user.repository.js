@@ -17,11 +17,20 @@ class UserRepository extends BaseRepository {
 
   async findByRole(roleId, options = {}) {
     return await this.model.findAll({
-      include: [{ 
-        model: Role, 
-        as: "role", 
-        where: { id: roleId } 
-      }],
+      include: [
+        {
+          model: Role,
+          as: "role",
+          where: { id: roleId },
+        },
+      ],
+      ...options,
+    });
+  }
+
+  async findByIdWithRole(id, options = {}) {
+    return await this.model.findByPk(id, {
+      include: [{ model: Role, as: "role" }],
       ...options,
     });
   }
@@ -31,10 +40,10 @@ class UserRepository extends BaseRepository {
     // Gak perlu lagi logic 'config' yang ribet di sini
     return await this.model.update(
       { lastLogin: new Date() },
-      { 
-        where: { id: userId }, 
-        ...options // transaction harus dibungkus dalam objek: { transaction: t }
-      }
+      {
+        where: { id: userId },
+        ...options, // transaction harus dibungkus dalam objek: { transaction: t }
+      },
     );
   }
 }

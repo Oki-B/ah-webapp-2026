@@ -31,9 +31,8 @@ const authSchema = {
   // 3. Schema untuk Refresh Token (Opsional: Validasi Cookie)
   refresh: z.object({
     cookies: z.object({
-      refreshToken: z
-        .string({ required_error: "Refresh token tidak ditemukan" })
-        .min(1, "Refresh token kosong"),
+      // Pakai .optional() agar tidak melempar VALIDATION_ERROR jika undefined
+      refresh_token: z.string().optional(),
     }),
   }),
 };

@@ -16,7 +16,7 @@ const router = require("./routes/");
 if (process.env.NODE_ENV === "test") {
   app.set("trust proxy", false);
 } else {
-  app.set("trust proxy", true);
+  app.set("trust proxy", false);
 }
 app.use(cors());
 app.use(express.json());

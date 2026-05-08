@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { AppError, verifyGoogleToken } = require("../utils");
-const { userRepository } = require("../repositories");
+const { userRepository, userSessionRepository } = require("../repositories");
 
 const authenticate = async (req, res, next) => {
   try {
@@ -19,8 +19,18 @@ const authenticate = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-    const user = await userRepository.findById(decoded.id);
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+    const activeSession = await userSessionRepository.findById(
+      decoded.sessionId,
+    );
+
+    if (activeSession.revokedAt || activeSession.expiresAt < new Date()) {
+      throw new AppError("Session not found or expired", 401);
+    }
+
+    const user = await userRepository.findByIdWithRole(decoded.userId);
+
     if (!user) {
       throw new AppError("User not found", 404);
     }
@@ -32,7 +42,7 @@ const authenticate = async (req, res, next) => {
     req.user = {
       id: user.id,
       email: user.email,
-      role: user.role.name,
+      role: user.role.dataValues.name, // Pastikan role ada di dataValues
       sessionId: decoded.sessionId, // Attach sessionId dari token ke req.user
     }; // Attach user to request object
 
