@@ -1,6 +1,6 @@
 const { authService, sessionService } = require("../services");
 const { AUTH } = require("../config/constants");
-const { extractClientInfo, verifyGoogleToken } = require("../utils/");
+const { extractClientInfo, verifyGoogleToken, AppError } = require("../utils/");
 
 class AuthController {
   async login(req, res, next) {
@@ -57,7 +57,11 @@ class AuthController {
 
   async refresh(req, res, next) {
     try {
-      const oldRefreshToken = req.cookies.refreshToken;
+      const oldRefreshToken = req.cookies.refresh_token;
+
+      if (!oldRefreshToken) {
+        throw new AppError("Sesi tidak ditemukan, silahkan login kembali", 401);
+      }
       const deviceInfo = extractClientInfo(req);
       const { email } = req.user || {}; // Ambil email dari req.user jika tersedia
 

@@ -7,3 +7,5 @@ const sessionSchema = {
         })
     })
 }
+
+module.exports = sessionSchema;

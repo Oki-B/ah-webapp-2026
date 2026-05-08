@@ -208,7 +208,7 @@ class SessionService {
       );
       await userSessionRepository.revokeOtherSessions(
         userId,
-        currentSessionId,
+        currentSession.refreshToken,
         {
           transaction,
         },

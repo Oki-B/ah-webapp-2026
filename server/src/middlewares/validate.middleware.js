@@ -7,20 +7,22 @@ const validate = (schema) => (req, res, next) => {
       query: req.query || {},
       params: req.params || {},
       cookies: req.cookies || {},
-      user: req.user || {},
+      // user: req.user || {}, // Tidak perlu memparse user di sini
     });
 
-    // overwrite biar udah clean & typed
-    req.body = parsedData.body;
-    req.query = parsedData.query;
-    req.params = parsedData.params;
-    req.cookies = parsedData.cookies;
-    req.user = parsedData.user;
+    // Overwrite data input agar bersih (hanya yang ada di schema yang masuk)
+    if (parsedData.body) req.body = parsedData.body;
+    if (parsedData.query) req.query = parsedData.query;
+    if (parsedData.params) req.params = parsedData.params;
+    if (parsedData.cookies) req.cookies = parsedData.cookies;
+    
+    // JANGAN TIMPA req.user DI SINI
+    // Biarkan data dari middleware authenticate tetap utuh
 
     next();
   } catch (error) {
     if (error instanceof ZodError) {
-      return next(error); // Biarkan error ini ditangani oleh errorHandler middleware
+      return next(error); 
     }
     next(error);
   }

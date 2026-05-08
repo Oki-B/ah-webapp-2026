@@ -22,7 +22,7 @@ class SessionController {
 
   async logout(req, res, next) {
     try {
-      const { refreshToken } = req.cookies;
+      const refreshToken = req.cookies.refresh_token;
       const { email } = req.user || {};
 
       await sessionService.revokeCurrentSession(refreshToken, email);
@@ -59,6 +59,7 @@ class SessionController {
   async logoutOtherDevices(req, res, next) {
     try {
       const { id, email, sessionId } = req.user;
+      console.log("Current Session ID:", sessionId); // Debug: Pastikan sessionId tersedia di req.user
       await sessionService.revokeOtherDevices(id, sessionId, email);
 
       res.status(200).json({

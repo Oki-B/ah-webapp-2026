@@ -7,12 +7,12 @@ const { sessionSchema } = require("../validators/");
 
 router.use(authenticate); // Pastikan middleware ini benar-benar ada dan berfungsi
 
-router.get("/sessions", sessionController.getSessions);
-router.delete("/sessions/current", sessionController.logout);
-router.delete("/sessions/others", sessionController.logoutOtherDevices);
+router.get("/", sessionController.getSessions);
+router.delete("/current", sessionController.logout);
+router.delete("/others", sessionController.logoutOtherDevices);
 router.delete(
-  "/sessions/:sessionId",
-  validate(sessionSchema),
+  "/:sessionId",
+  validate(sessionSchema.revokeDevice),
   sessionController.logoutFromDevice,
 );
 
